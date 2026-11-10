@@ -47,6 +47,7 @@ select,input[type=text]{width:100%;height:46px;border-radius:10px;border:0;backg
 .ch img{width:100%;height:calc(var(--cw,86px)*.6);object-fit:cover;display:block;background:#000}
 .ch small{display:block;text-align:center;font-size:11px;padding:2px 0;color:#cfd8dc}
 .ch i{position:absolute;top:2px;left:3px;font-style:normal;font-size:11px;font-weight:800;background:rgba(0,0,0,.6);border-radius:6px;padding:0 4px}
+.credit{text-align:center;color:#78909c;font-size:11px;margin:0 0 8px}
 .hint{color:#90a4ae;font-size:13px;margin:4px 0}
 .item{display:flex;align-items:center;gap:8px;background:#37474f;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:14px}
 .item span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -140,11 +141,14 @@ function tabProjets(){
  <div class="hint">Le montage est aussi sauvegardé tout seul toutes les quelques secondes.</div></div>`}
 /* ---------- onglet MÉDIAS ---------- */
 function tabMedias(){
- return `<div class="card"><h3>Ajouter</h3><div class="row"><button class="btn o big" onclick="$('fv').click()">➕ PHOTOS ET VIDÉOS</button></div>
+ return `<div class="credit">${esc(AUT.name)} · ${esc(AUT.insta)}</div><div class="card"><h3>Ajouter</h3><div class="row"><button class="btn o big" onclick="$('fv').click()">➕ PHOTOS ET VIDÉOS</button></div>
  <div class="hint">Tu peux en choisir plusieurs d'un coup. Ils s'ajoutent à la fin du montage.</div></div>
  ${N&&N.projList?tabProjets():""}
  <div class="card"><h3>Montage (${S.clips.length} éléments, ${fmt(total())})</h3>${strip()}
- ${S.clips.length?`<div class="hint">Touche un élément puis va dans MONTAGE pour le régler.</div>`:`<div class="hint">Rien pour l'instant.</div>`}</div>`}
+ ${S.clips.length?`<div class="hint">Touche un élément puis va dans MONTAGE pour le régler.</div>`:`<div class="hint">Rien pour l'instant.</div>`}</div>
+ <div class="card"><h3>✏️ Auteur</h3><div class="hint">Ton nom et ton Instagram, affichés en petit en haut de cet onglet et proposés comme signature du mode exposition.</div>
+ <label class="f">Nom</label><input type="text" value="${esc(AUT.name)}" onchange="setAut('name',this.value)">
+ <label class="f">Adresse Instagram</label><input type="text" value="${esc(AUT.insta)}" onchange="setAut('insta',this.value)"></div>`}
 function strip(){const st=starts();return `<div id="strip">${S.clips.map((c,i)=>`<div class="ch ${i===S.sel?"sel":""}" onclick="selClip(${i})"><i>${i+1}</i><img src="${c.thumb||""}"><small>${c.type==="image"?"🖼 ":"🎞 "}${fmt1(dur(c))}</small></div>`).join("")}</div>`}
 function selClip(i){S.sel=i;S.pos=starts()[i];$("sl").value=S.pos;show(S.pos,true);render()}
 $("fv").onchange=e=>{const files=[...e.target.files];let p=[];try{p=JSON.parse(N.lastPicked())}catch(_){}
@@ -417,6 +421,9 @@ function hgSet(pct,run){const p=Math.max(0,Math.min(1,pct/100)),c=hgCol(p),h=82*
  $("ptxt").textContent=Math.round(pct)+" %";$("ptxt").style.color=c}
 
 /* ================= VERSION 3 ================= */
+const AUT={name:"JM.DARGERE",insta:"@jean_michel_dargere"};
+try{const a=JSON.parse(localStorage.getItem("aut")||"null");if(a){AUT.name=a.name||AUT.name;AUT.insta=a.insta!=null?a.insta:AUT.insta}}catch(_){}
+function setAut(k,v){AUT[k]=v.trim();try{localStorage.setItem("aut",JSON.stringify(AUT))}catch(_){}render()}
 const AUTO={busy:false,res:null};
 let tpMode=false,tpRaf=0,tpY=0,tpLast=0,recT0=0,queue=[];
 const TRANS=[["cross","Fondu enchaîné (les deux images se mélangent)"],["dip","Fondu au noir"],["slide","Glisser (la suite arrive par la droite)"],["slideup","Glisser (la suite arrive par le bas)"],["zoom","Zoom (la suite grandit au centre)"],["none","Aucune (coupe franche)"]];
@@ -754,7 +761,7 @@ function tabAuto(){
  <button class="btn t big" onclick="makeBA()" ${n?"":"disabled"}>↔ CRÉER L'AVANT / APRÈS</button></div>
  <div class="card"><h3>🖼 Mode exposition</h3><div class="hint">Diaporama pour un écran de galerie : titre de l'exposition, légende de chaque photo (réglable dans MONTAGE), « photo à vendre » et un QR code à la fin.</div>
  <label class="f">Nom de l'exposition</label><input type="text" id="xn" placeholder="Ex. Lumières de Thaïlande">
- <label class="f">Signature</label><input type="text" id="xs" placeholder="© JM Dargère">
+ <label class="f">Signature</label><input type="text" id="xs" value="© ${esc(AUT.name)}" placeholder="© JM Dargère">
  <label class="f">Site ou contact (pour le QR code)</label><input type="text" id="xu" placeholder="https://… ou adresse e-mail">
  <label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="xc" checked style="width:26px;height:26px"> Afficher la légende de chaque photo</label>
  <label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="xv" style="width:26px;height:26px"> Afficher « PHOTO À VENDRE »</label>
