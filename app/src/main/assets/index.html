@@ -84,14 +84,17 @@ select,input[type=text]{width:100%;height:46px;border-radius:10px;border:0;backg
 <audio id="pa"></audio>
 <script>
 const $=id=>document.getElementById(id);
-const S={clips:[],titles:[],music:null,voice:null,sel:-1,ratio:"16:9",res:1080,fadeMs:600,duck:true,pos:0,tab:0,imgMs:4000};
+const S={clips:[],titles:[],music:null,voice:null,sel:-1,ratio:"16:9",res:1080,fadeMs:600,trans:"cross",duck:true,pos:0,tab:0,imgMs:4000};
+const mu=u=>"/m?u="+encodeURIComponent(u);
 let undo=[],redo=[],playing=false,t0=0,raf=0,curIdx=-2,job=null,jobT0=0,pollT=0,recT=0,recOn=false;
 const N=window.Native||null;
 function fmt(ms){ms=Math.max(0,Math.round(ms/1000));return Math.floor(ms/60)+":"+String(ms%60).padStart(2,"0")}
 function fmt1(ms){return (ms/1000).toFixed(1)+" s"}
-function dur(c){return c.type==="image"?c.imgMs:Math.max(200,c.out-c.in)}
-function starts(){let t=0;return S.clips.map(c=>{const s=t;t+=dur(c);return s})}
-function total(){return S.clips.reduce((a,c)=>a+dur(c),0)}
+function dur(c){return c.type==="image"?c.imgMs:Math.max(200,(c.out-c.in)/(c.speed||1))}
+function xOf(i){if(S.trans!=="cross"||i<=0||i>=S.clips.length)return 0;const x=Math.min(S.fadeMs,Math.min(dur(S.clips[i]),dur(S.clips[i-1]))/2-1);return x>=200?x:0}
+function mainDur(i){return dur(S.clips[i])-xOf(i)}
+function starts(){let t=0;return S.clips.map((c,i)=>{const s=t;t+=mainDur(i);return s})}
+function total(){return S.clips.reduce((a,c,i)=>a+mainDur(i),0)}
 function snap(){undo.push(JSON.stringify({c:S.clips,t:S.titles,s:S.sel}));if(undo.length>60)undo.shift();redo=[]}
 function restore(j){const o=JSON.parse(j);S.clips=o.c;S.titles=o.t;S.sel=Math.min(o.s,S.clips.length-1);curIdx=-2;refresh()}
 function doUndo(){if(!undo.length)return;redo.push(JSON.stringify({c:S.clips,t:S.titles,s:S.sel}));restore(undo.pop())}
@@ -103,10 +106,34 @@ function render(){const p=$("pane");const keep=p.scrollTop;p.innerHTML=[tabMedia
 function refresh(){const sl=$("sl");sl.max=total();$("empty").style.display=S.clips.length?"none":"flex";S.pos=Math.min(S.pos,total());sl.value=S.pos;show(S.pos,true);render()}
 function setRatio(){const r=S.ratio.split(":");$("pvwrap").style.aspectRatio=r[0]+"/"+r[1];$("pvwrap").style.width=(+r[0]>=+r[1]?"100%":"auto");$("pvwrap").style.height=(+r[0]>=+r[1]?"auto":"34vh")}
 
+/* ---------- projets ---------- */
+function projData(){return JSON.stringify({v:2,clips:S.clips,titles:S.titles,music:S.music,voice:S.voice,ratio:S.ratio,res:S.res,fadeMs:S.fadeMs,trans:S.trans,duck:S.duck,sel:S.sel})}
+function projApply(j){const o=JSON.parse(j);stop();S.clips=(o.clips||[]).filter(c=>c.uri||c.url);S.titles=o.titles||[];S.music=o.music||null;S.voice=o.voice||null;S.ratio=o.ratio||"16:9";S.res=o.res||1080;S.fadeMs=o.fadeMs==null?600:o.fadeMs;S.trans=o.trans||"cross";S.duck=o.duck!==false;S.sel=Math.min(o.sel==null?-1:o.sel,S.clips.length-1);S.pos=0;undo=[];redo=[];curIdx=-2;
+ S.clips.forEach(c=>{if(c.uri)c.url=mu(c.uri)});if(S.music&&S.music.uri){S.music.url=mu(S.music.uri)}
+ if(S.music){$("pa").src=S.music.url}else{$("pa").removeAttribute("src")}setRatio();lastSaved=projData();refresh()}
+let lastSaved="";
+function autosave(){if(!N||!N.projSave)return;try{const d=projData();if(d!==lastSaved&&S.clips.length){N.projSave("_auto",d);lastSaved=d}}catch(_){}}
+setInterval(autosave,3000);
+function saveProject(){const n=($("pn").value||"").trim();if(!n){toast("Donne un nom au projet.");return}
+ if(!N){toast("La sauvegarde fonctionne dans l'appli.");return}
+ if(N.projSave(n,projData()))toast("Projet « "+esc(n)+" » sauvegardé.");else toast("La sauvegarde a échoué.");render()}
+function loadProject(n){const j=N.projLoad(n);if(!j){toast("Projet introuvable.");return}try{projApply(j)}catch(e){toast("Ce projet est illisible.")}}
+function delProject(n){modal("","Supprimer ce projet ?","« "+esc(n)+" » sera effacé. Tes photos et vidéos ne sont pas touchées.",[["ANNULER","",closeModal],["SUPPRIMER","r",()=>{N.projDelete(n);closeModal();render()}]])}
+function tabProjets(){
+ let list=[];try{list=JSON.parse(N.projList())}catch(_){}
+ const auto=list.find(x=>x.name==="_auto"),others=list.filter(x=>x.name!=="_auto");
+ const d=t=>new Date(t).toLocaleString("fr-FR",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+ return `<div class="card"><h3>💾 Projets</h3>
+ ${auto?`<button class="btn g big" onclick="loadProject('_auto')">↩ REPRENDRE LE DERNIER MONTAGE<br><small>${d(auto.ts)}</small></button>`:""}
+ <label class="f">Sauvegarder ce montage sous le nom</label><input type="text" id="pn" placeholder="Ex. Pattaya novembre">
+ <div class="row"><button class="btn b" onclick="saveProject()">💾 SAUVEGARDER</button></div>
+ ${others.map(x=>`<div class="item"><span>${esc(x.name)} · ${d(x.ts)}</span><button style="background:#43a047" onclick="loadProject('${x.name.replace(/'/g,"\\'")}')">↩</button><button onclick="delProject('${x.name.replace(/'/g,"\\'")}')">🗑</button></div>`).join("")}
+ <div class="hint">Le montage est aussi sauvegardé tout seul toutes les quelques secondes.</div></div>`}
 /* ---------- onglet MÉDIAS ---------- */
 function tabMedias(){
  return `<div class="card"><h3>Ajouter</h3><div class="row"><button class="btn o big" onclick="$('fv').click()">➕ PHOTOS ET VIDÉOS</button></div>
  <div class="hint">Tu peux en choisir plusieurs d'un coup. Ils s'ajoutent à la fin du montage.</div></div>
+ ${N&&N.projList?tabProjets():""}
  <div class="card"><h3>Montage (${S.clips.length} éléments, ${fmt(total())})</h3>${strip()}
  ${S.clips.length?`<div class="hint">Touche un élément puis va dans MONTAGE pour le régler.</div>`:`<div class="hint">Rien pour l'instant.</div>`}</div>`}
 function strip(){const st=starts();return `<div id="strip">${S.clips.map((c,i)=>`<div class="ch ${i===S.sel?"sel":""}" onclick="selClip(${i})"><i>${i+1}</i><img src="${c.thumb||""}"><small>${c.type==="image"?"🖼 ":"🎞 "}${fmt1(dur(c))}</small></div>`).join("")}</div>`}
@@ -114,8 +141,8 @@ function selClip(i){S.sel=i;S.pos=starts()[i];$("sl").value=S.pos;show(S.pos,tru
 $("fv").onchange=e=>{const files=[...e.target.files];let p=[];try{p=JSON.parse(N.lastPicked())}catch(_){}
  snap();files.forEach((f,i)=>addFile(f,p[i]));e.target.value=""};
 function addFile(f,info){
- const image=(f.type||"").startsWith("image");const url=URL.createObjectURL(f);
- const c={id:Date.now()+Math.random(),type:image?"image":"video",url,uri:info?info.uri:"",name:f.name,in:0,out:0,src:0,imgMs:S.imgMs,vol:100,bright:0,contrast:0,sat:0,rot:0,fade:true,thumb:""};
+ const image=(f.type||"").startsWith("image");const url=(info&&info.uri)?mu(info.uri):URL.createObjectURL(f);
+ const c={id:Date.now()+Math.random(),type:image?"image":"video",url,uri:info?info.uri:"",name:f.name,in:0,out:0,src:0,imgMs:S.imgMs,vol:100,speed:1,kb:image,bright:0,contrast:0,sat:0,rot:0,fade:true,thumb:""};
  S.clips.push(c);
  if(image){c.thumb=url;refresh();return}
  const v=document.createElement("video");v.preload="metadata";v.muted=true;v.src=url;
@@ -140,15 +167,19 @@ function tabMontage(){
  }else{
   h+=`<label class="f">Durée d'affichage <span id="v_img">${fmt1(c.imgMs)}</span></label><input type="range" min="1000" max="15000" step="500" value="${c.imgMs}" oninput="setImg(+this.value)" onchange="commit()">`;
  }
- h+=`${c.type==="video"?`<label class="f">Volume <span id="v_vol">${c.vol} %</span></label><input type="range" min="0" max="200" value="${c.vol}" oninput="setP('vol',+this.value,' %')" onchange="commit()">`:""}
+ h+=`${c.type==="video"?`<label class="f">Vitesse <span id="v_speed">×${c.speed||1}</span></label><input type="range" min="0.25" max="4" step="0.05" value="${c.speed||1}" oninput="setSpeed(+this.value)" onchange="commit()">
+ <label class="f">Volume <span id="v_vol">${c.vol} %</span></label><input type="range" min="0" max="200" value="${c.vol}" oninput="setP('vol',+this.value,' %')" onchange="commit()">`:""}
  <label class="f">Luminosité <span id="v_bright">${c.bright}</span></label><input type="range" min="-50" max="50" value="${c.bright}" oninput="setP('bright',+this.value,'')" onchange="commit()">
  <label class="f">Contraste <span id="v_contrast">${c.contrast}</span></label><input type="range" min="-50" max="50" value="${c.contrast}" oninput="setP('contrast',+this.value,'')" onchange="commit()">
  <label class="f">Saturation <span id="v_sat">${c.sat}</span></label><input type="range" min="-100" max="100" value="${c.sat}" oninput="setP('sat',+this.value,'')" onchange="commit()">
- <div class="row"><button class="btn" onclick="rotClip(-90)">⟲ 90°</button><button class="btn" onclick="rotClip(90)">⟳ 90°</button><button class="btn ${c.fade?"g":""}" onclick="togFade()">${c.fade?"✔ FONDU":"FONDU"}</button></div></div>`;
+ <div class="row"><button class="btn" onclick="rotClip(-90)">⟲ 90°</button><button class="btn" onclick="rotClip(90)">⟳ 90°</button><button class="btn ${c.fade?"g":""}" onclick="togFade()">${c.fade?"✔ FONDU":"FONDU"}</button></div>
+ ${c.type==="image"?`<div class="row"><button class="btn ${c.kb?"g":""}" onclick="togKb()">${c.kb?"✔ ZOOM LENT":"ZOOM LENT"}</button></div>`:""}</div>`;
  return h}
 function curC(){return S.clips[S.sel]}
 function setIn(v){const c=curC();c.in=Math.min(v,c.out-200);$("v_in").textContent=fmt1(c.in);S.pos=starts()[S.sel];refreshLight()}
 function setOut(v){const c=curC();c.out=Math.max(v,c.in+200);$("v_out").textContent=fmt1(c.out);refreshLight()}
+function setSpeed(v){const c=curC();c.speed=v;$("v_speed").textContent="×"+v;refreshLight()}
+function togKb(){const c=curC();if(!c)return;snap();c.kb=!c.kb;render();show(S.pos,true)}
 function setImg(v){const c=curC();c.imgMs=v;$("v_img").textContent=fmt1(v);refreshLight()}
 function setP(k,v,u){const c=curC();c[k]=v;$("v_"+k).textContent=v+u;show(S.pos,true)}
 function refreshLight(){$("sl").max=total();show(S.pos,true)}
@@ -161,11 +192,11 @@ function togFade(){const c=curC();if(!c)return;snap();c.fade=!c.fade;render()}
 function splitAt(){
  const st=starts();let i=S.sel;
  for(let k=0;k<S.clips.length;k++){if(S.pos>=st[k]&&S.pos<st[k]+dur(S.clips[k])){i=k;break}}
- if(i<0)return;const c=S.clips[i],local=Math.round(S.pos-st[i]),whole=dur(c);
+ if(i<0)return;const c=S.clips[i],x=xOf(i),local=Math.round(S.pos-st[i])+x,whole=dur(c);
  if(local<300||local>whole-300){toast("Place le curseur au milieu de l'élément.");return}
  snap();const d=JSON.parse(JSON.stringify(c));d.id=Date.now()+Math.random();
- if(c.type==="image"){c.imgMs=local;d.imgMs=whole-local}
- else{const cut=c.in+local;d.in=cut;c.out=cut}
+ if(c.type==="image"){c.imgMs=Math.round(local);d.imgMs=Math.round(whole-local)}
+ else{const cut=Math.round(c.in+local*(c.speed||1));d.in=cut;c.out=cut}
  S.clips.splice(i+1,0,d);S.sel=i;refresh()}
 function toast(t){modal("",t,"",[["OK","g",closeModal]])}
 
@@ -199,9 +230,15 @@ function tabAudio(){
  ${v?`<div class="item"><span>Voix off · départ ${fmt(v.startMs)}</span><button onclick="delVoice()">🗑</button></div>
  <div class="row"><button class="btn" onclick="N&&N.playVoice(S.voice.path)">▶ ÉCOUTER</button></div>
  <label class="f">Volume de la voix <span id="v_vv">${v.vol} %</span></label><input type="range" min="0" max="200" value="${v.vol}" oninput="S.voice.vol=+this.value;$('v_vv').textContent=this.value+' %'">`:""}
- <label class="f" style="display:flex;gap:10px;align-items:center;margin-top:12px"><input type="checkbox" ${S.duck?"checked":""} onchange="S.duck=this.checked" style="width:26px;height:26px"> Baisser la musique quand je parle</label></div>`}
+ <label class="f" style="display:flex;gap:10px;align-items:center;margin-top:12px"><input type="checkbox" ${S.duck?"checked":""} onchange="S.duck=this.checked" style="width:26px;height:26px"> Baisser la musique quand je parle</label></div>
+ <div class="card"><h3>🥁 Montage automatique sur le rythme</h3>
+ <div class="hint">L'appli écoute la musique, trouve le tempo et règle la durée de chaque photo ou vidéo pour que les changements tombent sur les temps.</div>
+ <label class="f">Rythme des changements <span id="v_rk">${S.rk||"auto"}</span></label>
+ <select onchange="S.rk=this.value;$('v_rk').textContent=this.value" id="rkSel">${["auto","à chaque temps","tous les 2 temps","tous les 4 temps","tous les 8 temps"].map(x=>`<option ${(S.rk||"auto")===x?"selected":""}>${x}</option>`).join("")}</select>
+ <button class="btn g big" onclick="autoRhythm()" ${S.music&&S.clips.length?"":"disabled"}>🥁 LANCER LE MONTAGE AUTO</button>
+ <div class="hint" id="rhmsg">${S.music&&S.clips.length?"Prêt.":"Il faut d'abord au moins un élément et une musique."}</div></div>`}
 $("fm").onchange=e=>{const f=e.target.files[0];let p=[];try{p=JSON.parse(N.lastPicked())}catch(_){}
- if(f){S.music={url:URL.createObjectURL(f),uri:p[0]?p[0].uri:"",name:f.name,vol:100};$("pa").src=S.music.url}e.target.value="";render()};
+ if(f){const uu=p[0]?p[0].uri:"";S.music={url:uu?mu(uu):URL.createObjectURL(f),uri:uu,name:f.name,vol:100};$("pa").src=S.music.url}e.target.value="";render()};
 function m_v(v){S.music.vol=v;$("v_mv").textContent=v+" %";$("pa").volume=Math.min(1,v/100)}
 function delMusic(){S.music=null;$("pa").removeAttribute("src");render()}
 function delVoice(){S.voice=null;render()}
@@ -213,6 +250,42 @@ window.onMic=ok=>{if(!ok){toast("Autorise le micro pour enregistrer la voix.");r
  S.pos=S.pos||0;if(N.recStart()){recOn=true;render()}else toast("Impossible de démarrer le micro.")};
 window.onBack=()=>{if($("modal").style.display==="flex"){closeModal();return true}if(S.tab!==0){tab(0);return true}return false};
 
+
+/* ---------- rythme de la musique ---------- */
+async function analyseBeats(url){
+ const buf=await (await fetch(url)).arrayBuffer();
+ const AC=window.AudioContext||window.webkitAudioContext;const ctx=new AC();const ab=await ctx.decodeAudioData(buf);try{ctx.close()}catch(_){}
+ const ch=ab.getChannelData(0),sr=ab.sampleRate,hop=Math.round(sr*0.01),n=Math.floor(ch.length/hop);
+ const env=new Float32Array(n);
+ for(let i=0;i<n;i++){let e=0;const o=i*hop;for(let j=0;j<hop;j++){const v=ch[o+j];e+=v*v}env[i]=Math.sqrt(e/hop)}
+ const on=new Float32Array(n);for(let i=1;i<n;i++){on[i]=Math.max(0,env[i]-env[i-1])}
+ // moyenne glissante retiree (garde les vrais sursauts)
+ const w=20;let acc=0;const loc=new Float32Array(n);for(let i=0;i<n;i++){acc+=on[i];if(i>=w)acc-=on[i-w];loc[i]=Math.max(0,on[i]-acc/w*1.2)}
+ let best=-1,bestL=50;
+ for(let L=33;L<=100;L++){let sc=0;for(let i=0;i+L<n;i++)sc+=loc[i]*loc[i+L];
+  // favorise 80-140 BPM (lag 43-75)
+  const bpm=6000/L,wgt=(bpm>=80&&bpm<=140)?1.15:1;sc*=wgt;if(sc>best){best=sc;bestL=L}}
+ let bo=0,bs=-1;for(let o=0;o<bestL;o++){let sc=0;for(let i=o;i<n;i+=bestL)sc+=loc[i];if(sc>bs){bs=sc;bo=o}}
+ return {bpm:Math.round(6000/bestL),beatMs:bestL*10,first:bo*10,durMs:ab.duration*1000}}
+async function autoRhythm(){
+ const msg=$("rhmsg");if(!S.music||!S.clips.length)return;
+ msg.textContent="Écoute de la musique…";
+ let r;try{r=await analyseBeats(S.music.url)}catch(e){msg.textContent="Impossible de lire cette musique.";return}
+ const mode=S.rk||"auto",mult={"à chaque temps":1,"tous les 2 temps":2,"tous les 4 temps":4,"tous les 8 temps":8}[mode];
+ const N=S.clips.length;let k=mult;
+ if(!k){const target=r.durMs/N;k=Math.max(1,Math.round(target/r.beatMs));k=[1,2,4,8].reduce((a,b)=>Math.abs(b-k)<Math.abs(a-k)?b:a,1)}
+ while(k*r.beatMs<1500&&k<16)k*=2;
+ snap();const len=k*r.beatMs;
+ S.clips.forEach((c,i)=>{
+  // duree utile dans le montage : un multiple de temps ; les coupes tombent sur les temps
+  let want=len+(i===0?Math.min(r.first,len):0);
+  const x=(S.trans==="cross"&&i>0)?Math.min(S.fadeMs,want/2-1):0;want+=(x>=200?x:0);
+  if(c.type==="image"){c.imgMs=Math.round(want)}
+  else{const sp=c.speed||1,need=want*sp;
+   if(c.src>=need){const slack=c.src-need;c.in=Math.round(slack*0.25);c.out=Math.round(c.in+need)}
+   else{c.in=0;c.out=c.src}}});
+ refresh();
+ msg.textContent="Rythme détecté : "+r.bpm+" battements par minute, un changement tous les "+k+" temps ("+(len/1000).toFixed(1)+" s). Montage : "+fmt(total())+" pour "+fmt(r.durMs)+" de musique."}
 /* ---------- aperçu ---------- */
 function show(pos,seek){
  const st=starts(),n=S.clips.length;const pv=$("pv"),pi=$("pi");
@@ -222,14 +295,14 @@ function show(pos,seek){
  S.titles.forEach(t=>{if(pos>=t.from&&pos<=t.to){const el=$("tov");el.style.color=t.color;el.style.fontSize=(t.size*hv)+"px";el.style.top=t.pos===0?"6%":(t.pos===1?"40%":"");el.style.bottom=t.pos===2?"6%":"";tt=t.text}});
  $("tov").textContent=tt;if(!tt){$("tov").style.top="";$("tov").style.bottom=""}
  if(i<0){pv.removeAttribute("src");pv.style.display="none";pi.style.display="none";curIdx=-2;return}
- const c=S.clips[i],local=pos-st[i];
+ const c=S.clips[i],local=pos-st[i]+xOf(i);
  const filt=`brightness(${1+c.bright/100}) contrast(${1+c.contrast/100}) saturate(${1+c.sat/100})`;
  const tr=`rotate(${c.rot}deg)`;
- let f=0;if(S.fadeMs>0&&c.fade){const d=dur(c),fm=Math.min(S.fadeMs,d/2);if(local<fm)f=1-local/fm;if(local>d-fm)f=Math.max(f,(local-(d-fm))/fm)}
+ let f=0;if(S.trans==="dip"&&S.fadeMs>0&&c.fade){const d=dur(c),fm=Math.min(S.fadeMs,d/2);if(local<fm)f=1-local/fm;if(local>d-fm)f=Math.max(f,(local-(d-fm))/fm)}
  $("fadev").style.opacity=Math.max(0,Math.min(1,f));
- if(c.type==="image"){pv.pause();pv.style.display="none";pi.style.display="block";if(pi.getAttribute("src")!==c.url)pi.src=c.url;pi.style.filter=filt;pi.style.transform=tr}
+ if(c.type==="image"){pv.pause();pv.style.display="none";pi.style.display="block";if(pi.getAttribute("src")!==c.url)pi.src=c.url;pi.style.filter=filt;const kp=Math.max(0,Math.min(1,local/dur(c)));pi.style.transform=tr+(c.kb?" scale("+(1+0.18*(i%2===0?kp:1-kp))+")":"")}
  else{pi.style.display="none";pv.style.display="block";pv.style.filter=filt;pv.style.transform=tr;pv.volume=Math.min(1,c.vol/100);
-  const want=(c.in+local)/1000;
+  pv.playbackRate=c.speed||1;const want=(c.in+local*(c.speed||1))/1000;
   if(curIdx!==i||pv.getAttribute("data-u")!==c.url){curIdx=i;pv.setAttribute("data-u",c.url);pv.src=c.url;pv.onloadedmetadata=()=>{try{pv.currentTime=want}catch(_){}if(playing)pv.play().catch(()=>{})}}
   else if(seek||Math.abs(pv.currentTime-want)>0.6){try{pv.currentTime=want}catch(_){}}
   if(playing&&pv.paused)pv.play().catch(()=>{});if(!playing)pv.pause()}
@@ -249,8 +322,9 @@ function tabExport(){const sz=outSize();
  return `<div class="card"><h3>Format de la vidéo</h3>
  <label class="f">Format</label><select onchange="S.ratio=this.value;setRatio();render();show(S.pos,true)">${[["16:9","Paysage 16:9 (YouTube, TV)"],["9:16","Vertical 9:16 (Reels, TikTok, Story)"],["1:1","Carré 1:1 (Instagram)"],["4:5","Portrait 4:5 (Instagram)"],["4:3","Classique 4:3"]].map(a=>`<option value="${a[0]}" ${S.ratio===a[0]?"selected":""}>${a[1]}</option>`).join("")}</select>
  <label class="f">Qualité</label><select onchange="S.res=+this.value;render()">${[[720,"HD 720p (léger)"],[1080,"Full HD 1080p (conseillé)"],[2160,"Ultra HD 4K (lourd)"]].map(a=>`<option value="${a[0]}" ${S.res===a[0]?"selected":""}>${a[1]}</option>`).join("")}</select>
- <label class="f">Durée du fondu entre les éléments <span id="v_fd">${(S.fadeMs/1000).toFixed(1)} s</span></label><input type="range" min="0" max="2000" step="100" value="${S.fadeMs}" oninput="S.fadeMs=+this.value;$('v_fd').textContent=(this.value/1000).toFixed(1)+' s'">
- <div class="hint">Résultat : ${sz.w} × ${sz.h}, ${fmt(total())}. Enregistré dans Films / MONTAGE.</div></div>
+ <label class="f">Transition entre les éléments</label><select onchange="S.trans=this.value;refresh()">${[["cross","Fondu enchaîné (les deux images se mélangent)"],["dip","Fondu au noir"],["none","Aucune (coupe franche)"]].map(a=>`<option value="${a[0]}" ${S.trans===a[0]?"selected":""}>${a[1]}</option>`).join("")}</select>
+ <label class="f">Durée du fondu <span id="v_fd">${(S.fadeMs/1000).toFixed(1)} s</span></label><input type="range" min="0" max="2000" step="100" value="${S.fadeMs}" oninput="S.fadeMs=+this.value;$('v_fd').textContent=(this.value/1000).toFixed(1)+' s'" onchange="refresh()">
+ <div class="hint">Résultat : ${sz.w} × ${sz.h}, ${fmt(total())}. Enregistré dans Films / MONTAGE.<br>L'aperçu montre les coupes sans le mélange des images : le fondu enchaîné est appliqué à l'export. L'export continue même si tu quittes l'appli.</div></div>
  <button class="btn r big" id="bgo" onclick="startExport()" ${job&&job.run?"disabled":""}>🚀 EXPORTER LA VIDÉO</button>
  <div class="card" style="margin-top:10px" id="prog">
  <div class="hgw"><div class="hgflip" id="hgflip">${hgSVG()}</div><div class="hgr"><div class="hgp" id="ptxt">0 %</div>
@@ -263,8 +337,8 @@ function startExport(){
  if(S.clips.some(c=>!c.uri)){toast("Un élément n'a pas son fichier d'origine. Retire-le et ajoute-le de nouveau.");return}
  if(!N){toast("L'export fonctionne dans l'appli Android.");return}
  stop();const sz=outSize();
- const spec={w:sz.w,h:sz.h,fadeMs:S.fadeMs,
-  clips:S.clips.map(c=>({uri:c.uri,type:c.type,in:c.in,out:c.out,imgMs:c.imgMs,vol:c.vol,bright:c.bright,contrast:c.contrast,sat:c.sat,rot:c.rot,fade:c.fade})),
+ const spec={w:sz.w,h:sz.h,fadeMs:S.fadeMs,trans:S.trans,
+  clips:S.clips.map(c=>({uri:c.uri,type:c.type,in:c.in,out:c.out,imgMs:c.imgMs,vol:c.vol,bright:c.bright,contrast:c.contrast,sat:c.sat,rot:c.rot,fade:c.fade,speed:c.speed||1,kb:!!c.kb})),
   titles:S.titles.map(t=>({text:t.text,from:t.from,to:t.to,pos:t.pos,size:t.size,color:t.color})),
   duck:S.duck};
  if(S.music&&S.music.uri)spec.music={uri:S.music.uri,vol:S.music.vol};
