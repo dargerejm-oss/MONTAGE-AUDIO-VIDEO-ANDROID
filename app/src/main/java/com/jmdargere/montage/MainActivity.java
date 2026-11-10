@@ -3,6 +3,10 @@ package com.jmdargere.montage;
 import android.Manifest;
 import android.app.Activity;
 import android.content.ClipData;
+import android.content.res.AssetFileDescriptor;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebViewClient;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -28,6 +32,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * MONTAGE AUDIO VIDEO : la page de montage (assets/index.html) dans un WebView,
@@ -107,7 +115,32 @@ public class MainActivity extends Activity {
                 return true;
             }
         });
-        web.loadUrl("file:///android_asset/index.html");
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
+                Uri u = r.getUrl();
+                if (!"app.local".equals(u.getHost())) {
+                    return null;
+                }
+                try {
+                    String path = u.getPath();
+                    if (path == null || "/".equals(path) || "/index.html".equals(path)) {
+                        return new WebResourceResponse("text/html", "utf-8", getAssets().open("index.html"));
+                    }
+                    if ("/m".equals(path)) {
+                        return media(r, Uri.parse(u.getQueryParameter("u")));
+                    }
+                } catch (Exception ignored) {
+                }
+                return null;
+            }
+        });
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 13);
+        }
+        web.loadUrl("https://app.local/index.html");
     }
 
     @Override
@@ -152,6 +185,96 @@ public class MainActivity extends Activity {
         }
         lastPicked = arr.toString();
         cb.onReceiveValue(uris.toArray(new Uri[0]));
+    }
+
+    /** Sert une photo / video / musique du telephone a la page, avec le support de la lecture partielle. */
+    private WebResourceResponse media(WebResourceRequest r, Uri uri) throws Exception {
+        android.content.ContentResolver cr = getContentResolver();
+        String type = cr.getType(uri);
+        if (type == null) {
+            type = "application/octet-stream";
+        }
+        final AssetFileDescriptor afd = cr.openAssetFileDescriptor(uri, "r");
+        if (afd == null) {
+            return null;
+        }
+        long len = afd.getLength();
+        if (len < 0) {
+            len = afd.getParcelFileDescriptor().getStatSize();
+        }
+        long start = 0;
+        long end = len - 1;
+        boolean partial = false;
+        String range = r.getRequestHeaders().get("Range");
+        if (range != null && range.startsWith("bytes=")) {
+            String[] p = range.substring(6).split("-");
+            try {
+                start = Long.parseLong(p[0].trim());
+                if (p.length > 1 && !p[1].trim().isEmpty()) {
+                    end = Long.parseLong(p[1].trim());
+                }
+                partial = true;
+            } catch (Exception ignored) {
+                start = 0;
+            }
+        }
+        end = Math.min(end, len - 1);
+        if (start > end) {
+            start = 0;
+            partial = false;
+            end = len - 1;
+        }
+        final FileInputStream fis = new FileInputStream(afd.getFileDescriptor());
+        fis.getChannel().position(afd.getStartOffset() + start);
+        final long[] left = {end - start + 1};
+        InputStream in = new InputStream() {
+            @Override
+            public int read() throws java.io.IOException {
+                byte[] b = new byte[1];
+                int n = read(b, 0, 1);
+                return n <= 0 ? -1 : (b[0] & 0xff);
+            }
+
+            @Override
+            public int read(byte[] buf, int off, int n) throws java.io.IOException {
+                if (left[0] <= 0) {
+                    return -1;
+                }
+                int k = fis.read(buf, off, (int) Math.min(n, left[0]));
+                if (k > 0) {
+                    left[0] -= k;
+                }
+                return k;
+            }
+
+            @Override
+            public void close() {
+                try {
+                    fis.close();
+                    afd.close();
+                } catch (Exception ignored) {
+                }
+            }
+        };
+        Map<String, String> h = new HashMap<>();
+        h.put("Accept-Ranges", "bytes");
+        h.put("Content-Length", String.valueOf(end - start + 1));
+        h.put("Access-Control-Allow-Origin", "*");
+        if (partial) {
+            h.put("Content-Range", "bytes " + start + "-" + end + "/" + len);
+        }
+        return new WebResourceResponse(type, null, partial ? 206 : 200,
+                partial ? "Partial Content" : "OK", h, in);
+    }
+
+    private File projDir() {
+        File d = new File(getFilesDir(), "projets");
+        d.mkdirs();
+        return d;
+    }
+
+    private File projFile(String name) {
+        return new File(projDir(), name.replaceAll("[^\\p{L}\\p{N} _-]", "_") + ".json");
     }
 
     private String nameOf(Uri u) {
@@ -215,13 +338,79 @@ public class MainActivity extends Activity {
     /** Fonctions appelees par la page (JavaScript). */
     private final class Bridge {
         @JavascriptInterface
+        public boolean projSave(String name, String json) {
+            try {
+                java.io.FileOutputStream o = new java.io.FileOutputStream(projFile(name));
+                o.write(json.getBytes("UTF-8"));
+                o.close();
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        @JavascriptInterface
+        public String projLoad(String name) {
+            try {
+                File f = projFile(name);
+                if (!f.exists()) {
+                    return "";
+                }
+                java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                try (FileInputStream i = new FileInputStream(f)) {
+                    byte[] b = new byte[1 << 14];
+                    int n;
+                    while ((n = i.read(b)) > 0) {
+                        bo.write(b, 0, n);
+                    }
+                }
+                return bo.toString("UTF-8");
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
+        @JavascriptInterface
+        public String projList() {
+            JSONArray a = new JSONArray();
+            File[] fs = projDir().listFiles();
+            if (fs != null) {
+                java.util.Arrays.sort(fs, (x, y) -> Long.compare(y.lastModified(), x.lastModified()));
+                for (File f : fs) {
+                    String n = f.getName();
+                    if (n.endsWith(".json")) {
+                        try {
+                            JSONObject o = new JSONObject();
+                            o.put("name", n.substring(0, n.length() - 5));
+                            o.put("ts", f.lastModified());
+                            a.put(o);
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+            }
+            return a.toString();
+        }
+
+        @JavascriptInterface
+        public void projDelete(String name) {
+            projFile(name).delete();
+        }
+
+        @JavascriptInterface
         public String lastPicked() {
             return lastPicked;
         }
 
         @JavascriptInterface
         public void exportStart(String json) {
-            Exporter.start(getApplicationContext(), json);
+            ExportService.pendingJson = json;
+            Intent svc = new Intent(MainActivity.this, ExportService.class);
+            if (Build.VERSION.SDK_INT >= 26) {
+                startForegroundService(svc);
+            } else {
+                startService(svc);
+            }
         }
 
         @JavascriptInterface
@@ -277,7 +466,9 @@ public class MainActivity extends Activity {
         public boolean recStart() {
             try {
                 stopRec();
-                recFile = new File(getCacheDir(), "voix_" + System.currentTimeMillis() + ".m4a");
+                File vd = new File(getFilesDir(), "voix");
+                vd.mkdirs();
+                recFile = new File(vd, "voix_" + System.currentTimeMillis() + ".m4a");
                 MediaRecorder r = new MediaRecorder();
                 r.setAudioSource(MediaRecorder.AudioSource.MIC);
                 r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
