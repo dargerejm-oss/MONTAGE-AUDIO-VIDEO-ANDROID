@@ -147,12 +147,14 @@ public final class Exporter {
                     .setStartPositionMs(srcInMs).setEndPositionMs(srcInMs + srcMs).build();
             MediaItem mi = new MediaItem.Builder().setUri(u).setClippingConfiguration(cc).build();
             eb = new EditedMediaItem.Builder(mi);
-            float sp = (float) c.optDouble("speed", 1.0);
-            if (Math.abs(sp - 1f) > 0.01f) {
-                eb.setSpeed(new Speed(sp));
-            }
         }
         List<Effect> vfx = new ArrayList<>();
+        List<AudioProcessor> afx = new ArrayList<>();
+        float sp = image ? 1f : (float) c.optDouble("speed", 1.0);
+        if (Math.abs(sp - 1f) > 0.01f) {
+            vfx.add(new androidx.media3.effect.SpeedChangeEffect(sp));
+            afx.add(new androidx.media3.common.audio.SpeedChangingAudioProcessor(new Speed(sp)));
+        }
         int rot = ((c.optInt("rot", 0) % 360) + 360) % 360;
         if (rot != 0) {
             vfx.add(new ScaleAndRotateTransformation.Builder().setRotationDegrees(-rot).build());
@@ -181,7 +183,8 @@ public final class Exporter {
             vfx.add(new AlphaRamp(effUs));
         }
         float vol = (float) (c.optDouble("vol", 100) / 100.0);
-        eb.setEffects(new Effects(volume(vol), ImmutableList.copyOf(vfx)));
+        afx.addAll(volume(vol));
+        eb.setEffects(new Effects(ImmutableList.copyOf(afx), ImmutableList.copyOf(vfx)));
         return eb.build();
     }
 
