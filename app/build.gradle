@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.jmdargere.montage'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.jmdargere.montage"
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
+        ndk {
+            abiFilters "arm64-v8a"
+        }
+    }
+
+    // Cle de signature fixe (dans le depot) : les mises a jour s'installent toujours par-dessus.
+    signingConfigs {
+        fixe {
+            storeFile file("montage.keystore")
+            storePassword "montage2026"
+            keyAlias "montage"
+            keyPassword "montage2026"
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.fixe
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.fixe
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "androidx.media3:media3-transformer:1.5.1"
+    implementation "androidx.media3:media3-effect:1.5.1"
+    implementation "androidx.media3:media3-common:1.5.1"
+}

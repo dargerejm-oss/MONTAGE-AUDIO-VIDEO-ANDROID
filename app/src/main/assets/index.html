@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>MONTAGE</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#232a31;color:#eceff1;font-family:system-ui,sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column}
+#top{flex:0 0 auto;background:#1b2127;padding:6px 8px 4px}
+#pvwrap{position:relative;margin:0 auto;background:#000;border-radius:10px;overflow:hidden;max-height:34vh;aspect-ratio:16/9;width:100%}
+#pvwrap video,#pvwrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+#pvwrap img{display:none}
+#fadev{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none}
+#tov{position:absolute;left:0;right:0;text-align:center;font-weight:800;text-shadow:0 2px 6px #000;pointer-events:none;padding:0 6px}
+#empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#78909c;font-size:15px;text-align:center;padding:10px}
+#tr{display:flex;align-items:center;gap:8px;margin-top:6px}
+#tr button{flex:0 0 52px;height:44px;border:0;border-radius:12px;background:#43a047;color:#fff;font-size:22px;font-weight:800}
+#sl{flex:1;height:34px}
+#tm{flex:0 0 auto;font-size:13px;font-variant-numeric:tabular-nums;color:#b0bec5;min-width:84px;text-align:right}
+#pane{flex:1 1 auto;overflow-y:auto;padding:10px 10px 16px;-webkit-overflow-scrolling:touch}
+#tabs{flex:0 0 auto;display:flex;gap:4px;padding:5px;background:#10151a}
+#tabs button{flex:1;height:58px;border:0;border-radius:12px;color:#fff;font-weight:800;font-size:12px;opacity:.55;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+#tabs button b{font-size:20px;line-height:1}
+#tabs button.on{opacity:1;box-shadow:0 0 0 3px rgba(255,255,255,.55) inset}
+.t0{background:#ef6c00}.t1{background:#1e88e5}.t2{background:#8e24aa}.t3{background:#43a047}.t4{background:#e53935}
+.card{background:#2c353d;border-radius:14px;padding:12px;margin-bottom:10px}
+.card h3{margin:0 0 8px;font-size:15px;color:#cfd8dc}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:0 14px;border:0;border-radius:12px;background:#455a64;color:#fff;font-size:15px;font-weight:700}
+.btn.big{width:100%;min-height:60px;font-size:18px}
+.btn.o{background:#ef6c00}.btn.b{background:#1e88e5}.btn.p{background:#8e24aa}.btn.g{background:#43a047}.btn.r{background:#e53935}
+.btn:disabled{opacity:.4}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+.row>.btn{flex:1}
+label.f{display:block;margin:10px 0 2px;font-size:13px;color:#b0bec5}
+label.f span{float:right;color:#fff;font-weight:700}
+input[type=range]{width:100%;height:34px}
+select,input[type=text]{width:100%;height:46px;border-radius:10px;border:0;background:#37474f;color:#fff;font-size:16px;padding:0 10px}
+#strip{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 8px}
+.ch{flex:0 0 86px;border-radius:10px;background:#37474f;overflow:hidden;border:3px solid transparent;position:relative}
+.ch.sel{border-color:#1e88e5}
+.ch img{width:100%;height:52px;object-fit:cover;display:block;background:#000}
+.ch small{display:block;text-align:center;font-size:11px;padding:2px 0;color:#cfd8dc}
+.ch i{position:absolute;top:2px;left:3px;font-style:normal;font-size:11px;font-weight:800;background:rgba(0,0,0,.6);border-radius:6px;padding:0 4px}
+.hint{color:#90a4ae;font-size:13px;margin:4px 0}
+.item{display:flex;align-items:center;gap:8px;background:#37474f;border-radius:10px;padding:8px 10px;margin:6px 0;font-size:14px}
+.item span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item button{flex:0 0 40px;height:40px;border:0;border-radius:10px;background:#e53935;color:#fff;font-size:18px}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:9;padding:20px}
+#modal .box{background:#2c353d;border-radius:18px;padding:18px;width:100%;max-width:420px;text-align:center}
+#modal h2{margin:0 0 8px;font-size:26px}
+#modal.ok h2{color:#66bb6a}#modal.err h2{color:#ef5350}
+.banner{margin:10px 0 4px;border-radius:12px;padding:14px;text-align:center;font-size:24px;font-weight:900;background:#455a64;color:#fff;letter-spacing:1px}
+.banner.run{background:#1e88e5}.banner.done{background:#2e7d32;font-size:34px}.banner.err{background:#c62828}.banner.stop{background:#ef6c00}
+.msg{text-align:center;color:#b0bec5;font-size:13px;min-height:18px}
+.clocks{display:flex;gap:14px;font-weight:700}
+.bar{height:20px;background:#37474f;border-radius:10px;overflow:hidden;margin:6px 0}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#e53935,#fb8c00,#fdd835,#43a047);transition:width .4s}
+.hgw{display:flex;align-items:center;gap:14px;margin:6px 4px 2px}
+.hgw svg{flex:0 0 132px;width:132px;height:194px;filter:drop-shadow(0 6px 6px rgba(0,0,0,.18))}
+.hgr{flex:1;min-width:0}
+.hgp{font-size:44px;font-weight:900;line-height:1;transition:color .4s}
+.hgr .clocks{flex-direction:column;gap:6px;margin:10px 0 0;font-size:17px}
+.hgs{stroke-dasharray:3 4;animation:hgfall .35s linear infinite}
+@keyframes hgfall{to{stroke-dashoffset:-7}}
+.hgflip.fin{animation:hgwob 1s ease-in-out 2}
+@keyframes hgwob{0%,100%{transform:rotate(0)}30%{transform:rotate(-8deg)}70%{transform:rotate(8deg)}}
+
+</style></head><body>
+<div id="top">
+ <div id="pvwrap"><video id="pv" playsinline></video><img id="pi" alt=""><div id="fadev"></div><div id="tov"></div><div id="empty">Ajoute des photos et vidéos dans l'onglet MÉDIAS</div></div>
+ <div id="tr"><button id="bplay" onclick="togglePlay()">▶</button><input id="sl" type="range" min="0" max="0" value="0" oninput="scrub(+this.value)"><span id="tm">0:00 / 0:00</span></div>
+</div>
+<div id="pane"></div>
+<div id="tabs">
+ <button class="t0 on" onclick="tab(0)"><b>📁</b>MÉDIAS</button>
+ <button class="t1" onclick="tab(1)"><b>✂️</b>MONTAGE</button>
+ <button class="t2" onclick="tab(2)"><b>🔤</b>TITRES</button>
+ <button class="t3" onclick="tab(3)"><b>🎵</b>AUDIO</button>
+ <button class="t4" onclick="tab(4)"><b>📤</b>EXPORT</button>
+</div>
+<div id="modal"><div class="box"><h2 id="mt"></h2><div id="mb"></div><div class="row" id="mbt"></div></div></div>
+<input id="fv" type="file" accept="video/*,image/*" multiple hidden>
+<input id="fm" type="file" accept="audio/*" hidden>
+<audio id="pa"></audio>
+<script>
+const $=id=>document.getElementById(id);
+const S={clips:[],titles:[],music:null,voice:null,sel:-1,ratio:"16:9",res:1080,fadeMs:600,duck:true,pos:0,tab:0,imgMs:4000};
+let undo=[],redo=[],playing=false,t0=0,raf=0,curIdx=-2,job=null,jobT0=0,pollT=0,recT=0,recOn=false;
+const N=window.Native||null;
+function fmt(ms){ms=Math.max(0,Math.round(ms/1000));return Math.floor(ms/60)+":"+String(ms%60).padStart(2,"0")}
+function fmt1(ms){return (ms/1000).toFixed(1)+" s"}
+function dur(c){return c.type==="image"?c.imgMs:Math.max(200,c.out-c.in)}
+function starts(){let t=0;return S.clips.map(c=>{const s=t;t+=dur(c);return s})}
+function total(){return S.clips.reduce((a,c)=>a+dur(c),0)}
+function snap(){undo.push(JSON.stringify({c:S.clips,t:S.titles,s:S.sel}));if(undo.length>60)undo.shift();redo=[]}
+function restore(j){const o=JSON.parse(j);S.clips=o.c;S.titles=o.t;S.sel=Math.min(o.s,S.clips.length-1);curIdx=-2;refresh()}
+function doUndo(){if(!undo.length)return;redo.push(JSON.stringify({c:S.clips,t:S.titles,s:S.sel}));restore(undo.pop())}
+function doRedo(){if(!redo.length)return;undo.push(JSON.stringify({c:S.clips,t:S.titles,s:S.sel}));restore(redo.pop())}
+
+/* ---------- onglets ---------- */
+function tab(n){S.tab=n;document.querySelectorAll("#tabs button").forEach((b,i)=>b.classList.toggle("on",i===n));render()}
+function render(){const p=$("pane");const keep=p.scrollTop;p.innerHTML=[tabMedias,tabMontage,tabTitres,tabAudio,tabExport][S.tab]();p.scrollTop=keep;if(S.tab===4&&job)updJob()}
+function refresh(){const sl=$("sl");sl.max=total();$("empty").style.display=S.clips.length?"none":"flex";S.pos=Math.min(S.pos,total());sl.value=S.pos;show(S.pos,true);render()}
+function setRatio(){const r=S.ratio.split(":");$("pvwrap").style.aspectRatio=r[0]+"/"+r[1];$("pvwrap").style.width=(+r[0]>=+r[1]?"100%":"auto");$("pvwrap").style.height=(+r[0]>=+r[1]?"auto":"34vh")}
+
+/* ---------- onglet MÉDIAS ---------- */
+function tabMedias(){
+ return `<div class="card"><h3>Ajouter</h3><div class="row"><button class="btn o big" onclick="$('fv').click()">➕ PHOTOS ET VIDÉOS</button></div>
+ <div class="hint">Tu peux en choisir plusieurs d'un coup. Ils s'ajoutent à la fin du montage.</div></div>
+ <div class="card"><h3>Montage (${S.clips.length} éléments, ${fmt(total())})</h3>${strip()}
+ ${S.clips.length?`<div class="hint">Touche un élément puis va dans MONTAGE pour le régler.</div>`:`<div class="hint">Rien pour l'instant.</div>`}</div>`}
+function strip(){const st=starts();return `<div id="strip">${S.clips.map((c,i)=>`<div class="ch ${i===S.sel?"sel":""}" onclick="selClip(${i})"><i>${i+1}</i><img src="${c.thumb||""}"><small>${c.type==="image"?"🖼 ":"🎞 "}${fmt1(dur(c))}</small></div>`).join("")}</div>`}
+function selClip(i){S.sel=i;S.pos=starts()[i];$("sl").value=S.pos;show(S.pos,true);render()}
+$("fv").onchange=e=>{const files=[...e.target.files];let p=[];try{p=JSON.parse(N.lastPicked())}catch(_){}
+ snap();files.forEach((f,i)=>addFile(f,p[i]));e.target.value=""};
+function addFile(f,info){
+ const image=(f.type||"").startsWith("image");const url=URL.createObjectURL(f);
+ const c={id:Date.now()+Math.random(),type:image?"image":"video",url,uri:info?info.uri:"",name:f.name,in:0,out:0,src:0,imgMs:S.imgMs,vol:100,bright:0,contrast:0,sat:0,rot:0,fade:true,thumb:""};
+ S.clips.push(c);
+ if(image){c.thumb=url;refresh();return}
+ const v=document.createElement("video");v.preload="metadata";v.muted=true;v.src=url;
+ v.onloadedmetadata=()=>{c.src=Math.round(v.duration*1000)||1000;c.out=c.src;try{v.currentTime=Math.min(0.5,v.duration/2)}catch(_){}refresh()};
+ v.onseeked=()=>{try{const cv=document.createElement("canvas");cv.width=120;cv.height=68;cv.getContext("2d").drawImage(v,0,0,120,68);c.thumb=cv.toDataURL("image/jpeg",.7)}catch(_){}refresh();v.onseeked=null};
+ v.onerror=()=>{c.out=c.src=3000;refresh()};
+}
+
+/* ---------- onglet MONTAGE ---------- */
+function tabMontage(){
+ if(!S.clips.length)return `<div class="card"><h3>Montage</h3><div class="hint">Ajoute d'abord des médias.</div></div>`;
+ const c=S.clips[S.sel];
+ let h=`<div class="card"><h3>Éléments</h3>${strip()}
+ <div class="row"><button class="btn" onclick="mv(-1)">◀ AVANT</button><button class="btn" onclick="mv(1)">APRÈS ▶</button></div>
+ <div class="row"><button class="btn b" onclick="splitAt()">✂️ COUPER ICI</button><button class="btn" onclick="dupClip()">⧉ DOUBLER</button><button class="btn r" onclick="delClip()">🗑</button></div>
+ <div class="row"><button class="btn" onclick="doUndo()" ${undo.length?"":"disabled"}>↶ ANNULER</button><button class="btn" onclick="doRedo()" ${redo.length?"":"disabled"}>↷ RÉTABLIR</button></div></div>`;
+ if(!c)return h+`<div class="card"><div class="hint">Touche un élément pour le régler.</div></div>`;
+ h+=`<div class="card"><h3>Élément ${S.sel+1} : ${c.type==="image"?"photo":"vidéo"}</h3>`;
+ if(c.type==="video"){
+  h+=`<label class="f">Début <span id="v_in">${fmt1(c.in)}</span></label><input type="range" min="0" max="${Math.max(0,c.src-200)}" value="${c.in}" oninput="setIn(+this.value)" onchange="commit()">
+  <label class="f">Fin <span id="v_out">${fmt1(c.out)}</span></label><input type="range" min="200" max="${c.src}" value="${c.out}" oninput="setOut(+this.value)" onchange="commit()">`;
+ }else{
+  h+=`<label class="f">Durée d'affichage <span id="v_img">${fmt1(c.imgMs)}</span></label><input type="range" min="1000" max="15000" step="500" value="${c.imgMs}" oninput="setImg(+this.value)" onchange="commit()">`;
+ }
+ h+=`${c.type==="video"?`<label class="f">Volume <span id="v_vol">${c.vol} %</span></label><input type="range" min="0" max="200" value="${c.vol}" oninput="setP('vol',+this.value,' %')" onchange="commit()">`:""}
+ <label class="f">Luminosité <span id="v_bright">${c.bright}</span></label><input type="range" min="-50" max="50" value="${c.bright}" oninput="setP('bright',+this.value,'')" onchange="commit()">
+ <label class="f">Contraste <span id="v_contrast">${c.contrast}</span></label><input type="range" min="-50" max="50" value="${c.contrast}" oninput="setP('contrast',+this.value,'')" onchange="commit()">
+ <label class="f">Saturation <span id="v_sat">${c.sat}</span></label><input type="range" min="-100" max="100" value="${c.sat}" oninput="setP('sat',+this.value,'')" onchange="commit()">
+ <div class="row"><button class="btn" onclick="rotClip(-90)">⟲ 90°</button><button class="btn" onclick="rotClip(90)">⟳ 90°</button><button class="btn ${c.fade?"g":""}" onclick="togFade()">${c.fade?"✔ FONDU":"FONDU"}</button></div></div>`;
+ return h}
+function curC(){return S.clips[S.sel]}
+function setIn(v){const c=curC();c.in=Math.min(v,c.out-200);$("v_in").textContent=fmt1(c.in);S.pos=starts()[S.sel];refreshLight()}
+function setOut(v){const c=curC();c.out=Math.max(v,c.in+200);$("v_out").textContent=fmt1(c.out);refreshLight()}
+function setImg(v){const c=curC();c.imgMs=v;$("v_img").textContent=fmt1(v);refreshLight()}
+function setP(k,v,u){const c=curC();c[k]=v;$("v_"+k).textContent=v+u;show(S.pos,true)}
+function refreshLight(){$("sl").max=total();show(S.pos,true)}
+function commit(){render()}
+function mv(d){const i=S.sel,j=i+d;if(i<0||j<0||j>=S.clips.length)return;snap();[S.clips[i],S.clips[j]]=[S.clips[j],S.clips[i]];S.sel=j;refresh()}
+function dupClip(){if(S.sel<0)return;snap();const c=JSON.parse(JSON.stringify(S.clips[S.sel]));c.id=Date.now()+Math.random();S.clips.splice(S.sel+1,0,c);S.sel++;refresh()}
+function delClip(){if(S.sel<0)return;snap();S.clips.splice(S.sel,1);S.sel=Math.min(S.sel,S.clips.length-1);refresh()}
+function rotClip(d){const c=curC();if(!c)return;snap();c.rot=((c.rot+d)%360+360)%360;show(S.pos,true);render()}
+function togFade(){const c=curC();if(!c)return;snap();c.fade=!c.fade;render()}
+function splitAt(){
+ const st=starts();let i=S.sel;
+ for(let k=0;k<S.clips.length;k++){if(S.pos>=st[k]&&S.pos<st[k]+dur(S.clips[k])){i=k;break}}
+ if(i<0)return;const c=S.clips[i],local=Math.round(S.pos-st[i]),whole=dur(c);
+ if(local<300||local>whole-300){toast("Place le curseur au milieu de l'élément.");return}
+ snap();const d=JSON.parse(JSON.stringify(c));d.id=Date.now()+Math.random();
+ if(c.type==="image"){c.imgMs=local;d.imgMs=whole-local}
+ else{const cut=c.in+local;d.in=cut;c.out=cut}
+ S.clips.splice(i+1,0,d);S.sel=i;refresh()}
+function toast(t){modal("",t,"",[["OK","g",closeModal]])}
+
+/* ---------- onglet TITRES ---------- */
+const COLS={"Blanc":"#FFFFFF","Jaune":"#FFD600","Rouge":"#FF5252","Vert":"#69F0AE","Noir":"#000000"};
+const SIZES={"Petit":.045,"Moyen":.07,"Grand":.10,"Très grand":.14};
+function tabTitres(){
+ return `<div class="card"><h3>Nouveau titre</h3><input type="text" id="tt" placeholder="Texte du titre">
+ <label class="f">Position</label><select id="tp"><option value="2">En bas</option><option value="1">Au centre</option><option value="0">En haut</option></select>
+ <label class="f">Taille</label><select id="ts">${Object.keys(SIZES).map(k=>`<option ${k==="Moyen"?"selected":""}>${k}</option>`).join("")}</select>
+ <label class="f">Couleur</label><select id="tc">${Object.keys(COLS).map(k=>`<option>${k}</option>`).join("")}</select>
+ <label class="f">Durée d'affichage <span id="v_td">3 s</span></label><input type="range" id="td" min="1" max="15" value="3" oninput="$('v_td').textContent=this.value+' s'">
+ <div class="hint">Le titre apparaît à partir de l'endroit où tu as placé le curseur (${fmt(S.pos)}).</div>
+ <button class="btn p big" onclick="addTitle()">➕ AJOUTER LE TITRE</button></div>
+ <div class="card"><h3>Titres (${S.titles.length})</h3>${S.titles.map((t,i)=>`<div class="item"><span>${esc(t.text)} · ${fmt(t.from)} → ${fmt(t.to)}</span><button onclick="delTitle(${i})">🗑</button></div>`).join("")||'<div class="hint">Aucun titre.</div>'}</div>`}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function addTitle(){const tx=$("tt").value.trim();if(!tx){toast("Écris le texte du titre.");return}
+ snap();const d=(+$("td").value)*1000;S.titles.push({text:tx,from:Math.round(S.pos),to:Math.round(S.pos+d),pos:+$("tp").value,size:SIZES[$("ts").value],color:COLS[$("tc").value],colName:$("tc").value});render();show(S.pos,true)}
+function delTitle(i){snap();S.titles.splice(i,1);render();show(S.pos,true)}
+
+/* ---------- onglet AUDIO ---------- */
+function tabAudio(){
+ const m=S.music,v=S.voice;
+ return `<div class="card"><h3>🎵 Musique</h3>
+ <button class="btn g big" onclick="$('fm').click()">${m?"CHANGER LA MUSIQUE":"➕ CHOISIR UNE MUSIQUE"}</button>
+ ${m?`<div class="item"><span>${esc(m.name)}</span><button onclick="delMusic()">🗑</button></div>
+ <label class="f">Volume de la musique <span id="v_mv">${m.vol} %</span></label><input type="range" min="0" max="150" value="${m.vol}" oninput="m_v(+this.value)">`:`<div class="hint">La musique se répète si elle est plus courte que le montage.</div>`}</div>
+ <div class="card"><h3>🎙 Voix off</h3>
+ <button class="btn ${recOn?"r":"g"} big" onclick="recToggle()">${recOn?"⏹ ARRÊTER L'ENREGISTREMENT":"⏺ ENREGISTRER LA VOIX"}</button>
+ <div class="hint" id="rectxt">${recOn?"Enregistrement en cours…":"La voix démarre à l'endroit du curseur ("+fmt(S.pos)+")."}</div>
+ ${v?`<div class="item"><span>Voix off · départ ${fmt(v.startMs)}</span><button onclick="delVoice()">🗑</button></div>
+ <div class="row"><button class="btn" onclick="N&&N.playVoice(S.voice.path)">▶ ÉCOUTER</button></div>
+ <label class="f">Volume de la voix <span id="v_vv">${v.vol} %</span></label><input type="range" min="0" max="200" value="${v.vol}" oninput="S.voice.vol=+this.value;$('v_vv').textContent=this.value+' %'">`:""}
+ <label class="f" style="display:flex;gap:10px;align-items:center;margin-top:12px"><input type="checkbox" ${S.duck?"checked":""} onchange="S.duck=this.checked" style="width:26px;height:26px"> Baisser la musique quand je parle</label></div>`}
+$("fm").onchange=e=>{const f=e.target.files[0];let p=[];try{p=JSON.parse(N.lastPicked())}catch(_){}
+ if(f){S.music={url:URL.createObjectURL(f),uri:p[0]?p[0].uri:"",name:f.name,vol:100};$("pa").src=S.music.url}e.target.value="";render()};
+function m_v(v){S.music.vol=v;$("v_mv").textContent=v+" %";$("pa").volume=Math.min(1,v/100)}
+function delMusic(){S.music=null;$("pa").removeAttribute("src");render()}
+function delVoice(){S.voice=null;render()}
+function recToggle(){
+ if(!N){toast("Enregistrement disponible dans l'appli.");return}
+ if(recOn){const p=N.recStop();recOn=false;if(p)S.voice={path:p,startMs:Math.round(S.pos),vol:100};else toast("L'enregistrement a échoué.");render();return}
+ N.askMic()}
+window.onMic=ok=>{if(!ok){toast("Autorise le micro pour enregistrer la voix.");return}
+ S.pos=S.pos||0;if(N.recStart()){recOn=true;render()}else toast("Impossible de démarrer le micro.")};
+window.onBack=()=>{if($("modal").style.display==="flex"){closeModal();return true}if(S.tab!==0){tab(0);return true}return false};
+
+/* ---------- aperçu ---------- */
+function show(pos,seek){
+ const st=starts(),n=S.clips.length;const pv=$("pv"),pi=$("pi");
+ let i=-1;for(let k=0;k<n;k++){if(pos>=st[k]&&(pos<st[k]+dur(S.clips[k])||k===n-1)){i=k;break}}
+ $("tm").textContent=fmt(pos)+" / "+fmt(total());if(!playing)$("sl").value=pos;
+ let tt="";const hv=$("pvwrap").clientHeight||200;
+ S.titles.forEach(t=>{if(pos>=t.from&&pos<=t.to){const el=$("tov");el.style.color=t.color;el.style.fontSize=(t.size*hv)+"px";el.style.top=t.pos===0?"6%":(t.pos===1?"40%":"");el.style.bottom=t.pos===2?"6%":"";tt=t.text}});
+ $("tov").textContent=tt;if(!tt){$("tov").style.top="";$("tov").style.bottom=""}
+ if(i<0){pv.removeAttribute("src");pv.style.display="none";pi.style.display="none";curIdx=-2;return}
+ const c=S.clips[i],local=pos-st[i];
+ const filt=`brightness(${1+c.bright/100}) contrast(${1+c.contrast/100}) saturate(${1+c.sat/100})`;
+ const tr=`rotate(${c.rot}deg)`;
+ let f=0;if(S.fadeMs>0&&c.fade){const d=dur(c),fm=Math.min(S.fadeMs,d/2);if(local<fm)f=1-local/fm;if(local>d-fm)f=Math.max(f,(local-(d-fm))/fm)}
+ $("fadev").style.opacity=Math.max(0,Math.min(1,f));
+ if(c.type==="image"){pv.pause();pv.style.display="none";pi.style.display="block";if(pi.getAttribute("src")!==c.url)pi.src=c.url;pi.style.filter=filt;pi.style.transform=tr}
+ else{pi.style.display="none";pv.style.display="block";pv.style.filter=filt;pv.style.transform=tr;pv.volume=Math.min(1,c.vol/100);
+  const want=(c.in+local)/1000;
+  if(curIdx!==i||pv.getAttribute("data-u")!==c.url){curIdx=i;pv.setAttribute("data-u",c.url);pv.src=c.url;pv.onloadedmetadata=()=>{try{pv.currentTime=want}catch(_){}if(playing)pv.play().catch(()=>{})}}
+  else if(seek||Math.abs(pv.currentTime-want)>0.6){try{pv.currentTime=want}catch(_){}}
+  if(playing&&pv.paused)pv.play().catch(()=>{});if(!playing)pv.pause()}
+ curIdx=i}
+function scrub(v){S.pos=v;if(playing)t0=performance.now()-v;show(v,true);const pa=$("pa");if(S.music&&playing){try{pa.currentTime=(v/1000)%(pa.duration||1e9)}catch(_){}}}
+function togglePlay(){if(!S.clips.length)return;playing?stop():play()}
+function play(){if(S.pos>=total()-50)S.pos=0;playing=true;t0=performance.now()-S.pos;$("bplay").textContent="⏸";curIdx=-2;
+ if(S.music){try{$("pa").currentTime=(S.pos/1000)%($("pa").duration||1e9)}catch(_){}$("pa").loop=true;$("pa").volume=Math.min(1,S.music.vol/100);$("pa").play().catch(()=>{})}
+ const loop=()=>{if(!playing)return;S.pos=performance.now()-t0;if(S.pos>=total()){S.pos=total();stop();show(S.pos,false);return}$("sl").value=S.pos;show(S.pos,false);raf=requestAnimationFrame(loop)};loop()}
+function stop(){playing=false;cancelAnimationFrame(raf);$("bplay").textContent="▶";$("pv").pause();$("pa").pause()}
+
+/* ---------- onglet EXPORT ---------- */
+function outSize(){const sh=S.res,r=S.ratio.split(":").map(Number);let w,h;
+ if(r[0]>=r[1]){h=sh;w=Math.round(sh*r[0]/r[1])}else{w=sh;h=Math.round(sh*r[1]/r[0])}
+ return {w:w-(w%2),h:h-(h%2)}}
+function tabExport(){const sz=outSize();
+ return `<div class="card"><h3>Format de la vidéo</h3>
+ <label class="f">Format</label><select onchange="S.ratio=this.value;setRatio();render();show(S.pos,true)">${[["16:9","Paysage 16:9 (YouTube, TV)"],["9:16","Vertical 9:16 (Reels, TikTok, Story)"],["1:1","Carré 1:1 (Instagram)"],["4:5","Portrait 4:5 (Instagram)"],["4:3","Classique 4:3"]].map(a=>`<option value="${a[0]}" ${S.ratio===a[0]?"selected":""}>${a[1]}</option>`).join("")}</select>
+ <label class="f">Qualité</label><select onchange="S.res=+this.value;render()">${[[720,"HD 720p (léger)"],[1080,"Full HD 1080p (conseillé)"],[2160,"Ultra HD 4K (lourd)"]].map(a=>`<option value="${a[0]}" ${S.res===a[0]?"selected":""}>${a[1]}</option>`).join("")}</select>
+ <label class="f">Durée du fondu entre les éléments <span id="v_fd">${(S.fadeMs/1000).toFixed(1)} s</span></label><input type="range" min="0" max="2000" step="100" value="${S.fadeMs}" oninput="S.fadeMs=+this.value;$('v_fd').textContent=(this.value/1000).toFixed(1)+' s'">
+ <div class="hint">Résultat : ${sz.w} × ${sz.h}, ${fmt(total())}. Enregistré dans Films / MONTAGE.</div></div>
+ <button class="btn r big" id="bgo" onclick="startExport()" ${job&&job.run?"disabled":""}>🚀 EXPORTER LA VIDÉO</button>
+ <div class="card" style="margin-top:10px" id="prog">
+ <div class="hgw"><div class="hgflip" id="hgflip">${hgSVG()}</div><div class="hgr"><div class="hgp" id="ptxt">0 %</div>
+ <div class="clocks"><span>⏱ ÉCOULÉ <span id="cEl">00:00</span></span><span>⌛ RESTE <span id="cLeft">--:--</span></span></div></div></div>
+ <div class="bar"><i id="barfill"></i></div>
+ <div class="banner" id="banner">PRÊT</div><div class="msg" id="pmsg"></div>
+ <div class="row"><button class="btn r" id="bstop" style="flex:1" onclick="stopExport()" disabled>⏹ ARRÊTER</button></div></div>`}
+function startExport(){
+ if(!S.clips.length){toast("Ajoute d'abord des photos ou des vidéos.");return}
+ if(S.clips.some(c=>!c.uri)){toast("Un élément n'a pas son fichier d'origine. Retire-le et ajoute-le de nouveau.");return}
+ if(!N){toast("L'export fonctionne dans l'appli Android.");return}
+ stop();const sz=outSize();
+ const spec={w:sz.w,h:sz.h,fadeMs:S.fadeMs,
+  clips:S.clips.map(c=>({uri:c.uri,type:c.type,in:c.in,out:c.out,imgMs:c.imgMs,vol:c.vol,bright:c.bright,contrast:c.contrast,sat:c.sat,rot:c.rot,fade:c.fade})),
+  titles:S.titles.map(t=>({text:t.text,from:t.from,to:t.to,pos:t.pos,size:t.size,color:t.color})),
+  duck:S.duck};
+ if(S.music&&S.music.uri)spec.music={uri:S.music.uri,vol:S.music.vol};
+ if(S.voice)spec.voice={path:S.voice.path,startMs:S.voice.startMs,vol:S.voice.vol};
+ job={run:true,pct:0};jobT0=Date.now();N.exportStart(JSON.stringify(spec));
+ clearInterval(pollT);pollT=setInterval(pollJob,400);render();$("prog").scrollIntoView({behavior:"smooth",block:"center"})}
+function stopExport(){if(N)N.exportCancel()}
+function pollJob(){if(!N||!job)return;const st=N.exportState();job.pct=N.exportProgress();
+ if(st===2){clearInterval(pollT);job.run=false;job.done=true;job.res=N.exportResult();updJob();finishUp(true)}
+ else if(st===3){clearInterval(pollT);job.run=false;job.err=N.exportError();updJob();finishUp(false)}
+ else updJob()}
+function updJob(){if(!$("prog")||!job)return;const p=job.pct||0;
+ hgSet(job.done?100:p,job.run);$("barfill").style.width=(job.done?100:p)+"%";
+ const el=(Date.now()-jobT0)/1000;$("cEl").textContent=clk(el);
+ $("cLeft").textContent=job.done?"00:00":(p>3?clk(el*(100-p)/p):"--:--");
+ $("bgo").disabled=!!job.run;$("bstop").disabled=!job.run;
+ const b=$("banner");
+ if(job.run){b.className="banner run";b.textContent="EN COURS…"}
+ else if(job.done){b.className="banner done";b.textContent="TERMINÉ"}
+ else if(job.err==="annulé"){b.className="banner stop";b.textContent="ARRÊTÉ"}
+ else{b.className="banner err";b.textContent="ERREUR"}
+ $("pmsg").textContent=job.run?"Garde l'écran allumé pendant l'export.":(job.err&&job.err!=="annulé"?job.err:"")}
+function clk(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0")}
+function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)();[880,1175,1568].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=f;o.connect(g);g.connect(a.destination);const t=a.currentTime+i*.18;g.gain.setValueAtTime(.25,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.start(t);o.stop(t+.17)})}catch(_){}}
+function finishUp(ok){
+ if(ok){beep();if(N)N.buzz();const f=$("hgflip");if(f){f.classList.remove("fin");void f.offsetWidth;f.classList.add("fin")}
+  modal("ok","✔ TERMINÉ","Ta vidéo est dans <b>Films / MONTAGE</b>.<br>Durée : "+fmt(total())+"<br>Temps d'export : "+clk((Date.now()-jobT0)/1000),[["▶ VOIR LA VIDÉO","g",()=>{closeModal();N.viewVideo(job.res)}],["FERMER","",closeModal]])}
+ else if(job.err!=="annulé")modal("err","ERREUR","L'export a échoué.<br><small>"+esc(job.err)+"</small>",[["FERMER","",closeModal]])}
+/* ---------- fenêtre ---------- */
+function modal(kind,title,body,btns){const m=$("modal");m.className=kind;$("mt").textContent=title;$("mb").innerHTML=body;const b=$("mbt");b.innerHTML="";
+ btns.forEach(x=>{const e=document.createElement("button");e.className="btn "+x[1];e.textContent=x[0];e.onclick=x[2];b.append(e)});m.style.display="flex"}
+function closeModal(){$("modal").style.display="none"}
+function hgSVG(){return `<svg viewBox="0 0 150 220" id="hg"><defs>
+<linearGradient id="hgGl" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".75"/><stop offset=".25" stop-color="#cfe9f5" stop-opacity=".25"/><stop offset=".75" stop-color="#9fd0e8" stop-opacity=".18"/><stop offset="1" stop-color="#fff" stop-opacity=".6"/></linearGradient>
+<linearGradient id="hgWd" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#a1672f"/><stop offset=".5" stop-color="#7b4a1d"/><stop offset="1" stop-color="#4e2c0e"/></linearGradient>
+<radialGradient id="hgSh" cx=".35" cy=".3" r=".9"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></radialGradient>
+<clipPath id="hgcT"><path d="M30 28 H120 C120 70 88 92 80 110 H70 C62 92 30 70 30 28Z"/></clipPath>
+<clipPath id="hgcB"><path d="M70 110 H80 C88 128 120 150 120 192 H30 C30 150 62 128 70 110Z"/></clipPath></defs>
+<ellipse cx="75" cy="212" rx="62" ry="7" fill="#000" opacity=".22"/>
+<rect x="16" y="196" width="118" height="16" rx="6" fill="url(#hgWd)"/><rect x="16" y="196" width="118" height="4" rx="2" fill="#fff" opacity=".25"/>
+<g clip-path="url(#hgcT)"><rect id="hgT" x="20" y="28" width="110" height="82" fill="#E53935"/><rect id="hgTh" x="20" y="28" width="110" height="82" fill="url(#hgSh)"/></g>
+<g clip-path="url(#hgcB)"><path id="hgB" d="" fill="#E53935"/><path id="hgBh" d="" fill="url(#hgSh)"/></g>
+<line id="hgS" class="hgs" x1="75" x2="75" y1="108" y2="108" stroke="#E53935" stroke-width="2.6"/>
+<path d="M30 28 H120 C120 70 88 92 80 110 H70 C62 92 30 70 30 28Z M70 110 H80 C88 128 120 150 120 192 H30 C30 150 62 128 70 110Z" fill="url(#hgGl)" stroke="#8fb9cc" stroke-width="2.5"/>
+<path d="M40 36 C42 66 60 84 66 104" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".75"/>
+<path d="M40 184 C42 160 52 148 58 138" stroke="#fff" stroke-width="4" stroke-linecap="round" fill="none" opacity=".45"/>
+<rect x="18" y="14" width="114" height="16" rx="6" fill="url(#hgWd)"/><rect x="18" y="14" width="114" height="4" rx="2" fill="#fff" opacity=".25"/></svg>`}
+function hgCol(p){const a=[[0,[229,57,53]],[.45,[251,140,0]],[.75,[253,216,53]],[1,[67,160,71]]];for(let i=1;i<a.length;i++)if(p<=a[i][0]){const x=a[i-1],y=a[i],k=(p-x[0])/(y[0]-x[0]);return"rgb("+x[1].map((v,j)=>Math.round(v+(y[1][j]-v)*k)).join(",")+")"}return"rgb(67,160,71)"}
+function hgSet(pct,run){const p=Math.max(0,Math.min(1,pct/100)),c=hgCol(p),h=82*(1-p);
+ const T=$("hgT"),Th=$("hgTh");T.setAttribute("y",110-h);T.setAttribute("height",h);T.setAttribute("fill",c);Th.setAttribute("y",110-h);Th.setAttribute("height",h);
+ const d=`M20 192 H130 V${192-58*p} Q100 ${192-58*p} 75 ${192-70*p-6} Q50 ${192-58*p} 20 ${192-58*p}Z`;
+ $("hgB").setAttribute("d",d);$("hgB").setAttribute("fill",c);$("hgBh").setAttribute("d",d);
+ const S=$("hgS");S.setAttribute("y2",run&&p<1&&p>0?(192-70*p-6):108);S.setAttribute("stroke",c);
+ $("ptxt").textContent=Math.round(pct)+" %";$("ptxt").style.color=c}
+
+setRatio();refresh();
+</script></body></html>
