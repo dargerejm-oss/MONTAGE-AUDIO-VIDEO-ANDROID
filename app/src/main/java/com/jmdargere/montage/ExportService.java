@@ -58,9 +58,7 @@ public class ExportService extends Service {
                     NotificationManager.IMPORTANCE_LOW));
         }
         Notification n = build("MONTAGE", "Export en cours… 0 %", 0, true);
-        if (Build.VERSION.SDK_INT >= 35) {
-            startForeground(ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROCESSING);
-        } else if (Build.VERSION.SDK_INT >= 29) {
+        if (Build.VERSION.SDK_INT >= 29) {
             startForeground(ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC);
         } else {
             startForeground(ID, n);
