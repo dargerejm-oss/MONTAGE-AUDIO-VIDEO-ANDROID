@@ -112,6 +112,31 @@ public final class Exporter {
         return ImmutableList.<AudioProcessor>of(p);
     }
 
+    private static boolean isAnim(JSONObject c) {
+        return "anim".equals(c.optString("type"));
+    }
+
+    private static boolean overlapMode(String t) {
+        return "cross".equals(t) || "slide".equals(t) || "slideup".equals(t) || "zoom".equals(t);
+    }
+
+    /** Volume + fondus + equilibre + graves/aigus (si rien de special : simple volume). */
+    private static ImmutableList<AudioProcessor> fx(JSONObject o, float vol, long totalUs) {
+        if (o == null) {
+            return volume(vol);
+        }
+        float bass = (float) o.optDouble("bass", 0);
+        float treb = (float) o.optDouble("treble", 0);
+        float pan = (float) o.optDouble("pan", 0);
+        long fin = o.optLong("fin", 0) * 1000L;
+        long fout = o.optLong("fout", 0) * 1000L;
+        if (Math.abs(bass) < 0.1f && Math.abs(treb) < 0.1f && Math.abs(pan) < 0.01f
+                && fin <= 0 && fout <= 0) {
+            return volume(vol);
+        }
+        return ImmutableList.<AudioProcessor>of(new AudioFx(vol, pan, fin, fout, totalUs, bass, treb));
+    }
+
     private static final class Speed implements androidx.media3.common.audio.SpeedProvider {
         private final float s;
 
@@ -160,6 +185,9 @@ public final class Exporter {
             vfx.add(new ScaleAndRotateTransformation.Builder().setRotationDegrees(-rot).build());
         }
         vfx.add(Presentation.createForWidthAndHeight(w, h, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP));
+        if (c.optBoolean("mirror", false)) {
+            vfx.add(new ScaleAndRotateTransformation.Builder().setScale(-1f, 1f).build());
+        }
         if (c.optBoolean("kb", false)) {
             vfx.add(new KenBurns(kbTotalUs, idx, kbOffsetUs));
         }
@@ -175,12 +203,28 @@ public final class Exporter {
         if (Math.abs(sat) > 0.5) {
             vfx.add(new HslAdjustment.Builder().adjustSaturation((float) sat).build());
         }
+        String filter = c.optString("filter", "");
+        float[] fm = ColorFx.forName(filter);
+        if (fm != null) {
+            vfx.add(new ColorFx(fm));
+        }
+        if (c.optBoolean("vig", false) || "vintage".equals(filter)) {
+            vfx.add(new OverlayEffect(ImmutableList.of(new Vignette(w, h))));
+        }
         if ("dip".equals(trans) && fadeUs > 0 && c.optBoolean("fade", true)) {
             long f = Math.min(fadeUs, effUs / 2);
             vfx.add(new OverlayEffect(ImmutableList.of(new FadeOverlay(w, h, f, f, effUs))));
         }
         if (overlay) {
-            vfx.add(new AlphaRamp(effUs));
+            if ("slide".equals(trans)) {
+                vfx.add(new SlideIn(effUs, 0));
+            } else if ("slideup".equals(trans)) {
+                vfx.add(new SlideIn(effUs, 1));
+            } else if ("zoom".equals(trans)) {
+                vfx.add(new SlideIn(effUs, 2));
+            } else {
+                vfx.add(new AlphaRamp(effUs));
+            }
         }
         float vol = (float) (c.optDouble("vol", 100) / 100.0);
         afx.addAll(volume(vol));
@@ -205,7 +249,10 @@ public final class Exporter {
         for (int i = 0; i < n; i++) {
             JSONObject c = clips.getJSONObject(i);
             boolean image = "image".equals(c.getString("type"));
-            if (image) {
+            if (isAnim(c)) {
+                srcMs[i] = c.getLong("frameMs") * c.getJSONArray("frames").length();
+                effMs[i] = srcMs[i];
+            } else if (image) {
                 srcMs[i] = c.getLong("imgMs");
                 effMs[i] = srcMs[i];
             } else {
@@ -216,8 +263,11 @@ public final class Exporter {
         }
         // chevauchement du fondu enchaine entre l'element i-1 et i
         long[] xMs = new long[n];
-        if ("cross".equals(trans)) {
+        if (overlapMode(trans)) {
             for (int i = 1; i < n; i++) {
+                if (isAnim(clips.getJSONObject(i)) || isAnim(clips.getJSONObject(i - 1))) {
+                    continue;
+                }
                 long x = Math.min(fadeUs / 1000L, Math.min(effMs[i], effMs[i - 1]) / 2 - 1);
                 xMs[i] = x >= 200 ? x : 0;
             }
@@ -231,6 +281,24 @@ public final class Exporter {
         long startMain = 0;
         for (int i = 0; i < n; i++) {
             JSONObject c = clips.getJSONObject(i);
+            if (isAnim(c)) {
+                JSONArray fr = c.getJSONArray("frames");
+                long per = c.getLong("frameMs");
+                for (int k = 0; k < fr.length(); k++) {
+                    MediaItem fmi = new MediaItem.Builder().setUri(Uri.parse(fr.getString(k)))
+                            .setImageDurationMs(per).build();
+                    EditedMediaItem fem = new EditedMediaItem.Builder(fmi)
+                            .setDurationUs(per * 1000L)
+                            .setFrameRate(Math.max(1, (int) Math.round(1000.0 / per)))
+                            .setEffects(new Effects(ImmutableList.<AudioProcessor>of(),
+                                    ImmutableList.<Effect>of(Presentation.createForWidthAndHeight(w, h,
+                                            Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP))))
+                            .build();
+                    vseq.addItem(fem);
+                }
+                startMain += per * fr.length();
+                continue;
+            }
             boolean image = "image".equals(c.getString("type"));
             double sp = image ? 1.0 : Math.max(0.1, c.optDouble("speed", 1.0));
             long inMs = image ? 0 : c.getLong("in");
@@ -278,7 +346,7 @@ public final class Exporter {
             MediaItem mi = new MediaItem.Builder().setUri(Uri.parse(music.getString("uri")))
                     .setClippingConfiguration(cc).build();
             EditedMediaItem em = new EditedMediaItem.Builder(mi).setRemoveVideo(true)
-                    .setEffects(new Effects(volume(musicVol), ImmutableList.<Effect>of())).build();
+                    .setEffects(new Effects(fx(music, musicVol, totalUs), ImmutableList.<Effect>of())).build();
             seqs.add(new EditedMediaItemSequence.Builder().addItem(em).setIsLooping(true).build());
         }
 
@@ -292,8 +360,43 @@ public final class Exporter {
             MediaItem mi = new MediaItem.Builder().setUri(Uri.fromFile(new File(voice.getString("path")))).build();
             float vv = (float) (voice.optDouble("vol", 100) / 100.0);
             sb.addItem(new EditedMediaItem.Builder(mi).setRemoveVideo(true)
-                    .setEffects(new Effects(volume(vv), ImmutableList.<Effect>of())).build());
+                    .setEffects(new Effects(fx(voice, vv, 0L), ImmutableList.<Effect>of())).build());
             seqs.add(sb.build());
+        }
+
+        // ---------- images / videos incrustees (image dans l'image)
+        JSONArray pips = spec.optJSONArray("pips");
+        if (pips != null) {
+            for (int i = 0; i < pips.length(); i++) {
+                JSONObject p = pips.getJSONObject(i);
+                long fromMs = Math.max(0, p.optLong("from", 0));
+                long durMs = Math.max(500, p.optLong("durMs", 3000));
+                if (fromMs >= totalMs) {
+                    continue;
+                }
+                durMs = Math.min(durMs, totalMs - fromMs);
+                Uri pu = Uri.parse(p.getString("uri"));
+                EditedMediaItem.Builder pb;
+                if ("image".equals(p.optString("type"))) {
+                    MediaItem pm = new MediaItem.Builder().setUri(pu).setImageDurationMs(durMs).build();
+                    pb = new EditedMediaItem.Builder(pm).setDurationUs(durMs * 1000L).setFrameRate(30);
+                } else {
+                    MediaItem.ClippingConfiguration pc = new MediaItem.ClippingConfiguration.Builder()
+                            .setStartPositionMs(0).setEndPositionMs(durMs).build();
+                    pb = new EditedMediaItem.Builder(new MediaItem.Builder().setUri(pu)
+                            .setClippingConfiguration(pc).build()).setRemoveAudio(true);
+                }
+                List<Effect> pv = new ArrayList<>();
+                pv.add(Presentation.createForWidthAndHeight(w, h, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP));
+                pv.add(new PipPlace((float) p.optDouble("scale", 0.3), p.optInt("pos", 1)));
+                pb.setEffects(new Effects(ImmutableList.<AudioProcessor>of(), ImmutableList.copyOf(pv)));
+                EditedMediaItemSequence.Builder ps = new EditedMediaItemSequence.Builder();
+                if (fromMs > 0) {
+                    ps.addGap(fromMs * 1000L);
+                }
+                ps.addItem(pb.build());
+                seqs.add(ps.build());
+            }
         }
 
         // ---------- titres (sur toute la video finale)

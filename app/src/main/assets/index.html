@@ -19,10 +19,16 @@ body{display:flex;flex-direction:column}
 #tm{flex:0 0 auto;font-size:13px;font-variant-numeric:tabular-nums;color:#b0bec5;min-width:84px;text-align:right}
 #pane{flex:1 1 auto;overflow-y:auto;padding:10px 10px 16px;-webkit-overflow-scrolling:touch}
 #tabs{flex:0 0 auto;display:flex;gap:4px;padding:5px;background:#10151a}
-#tabs button{flex:1;height:58px;border:0;border-radius:12px;color:#fff;font-weight:800;font-size:12px;opacity:.55;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+#tabs button{flex:1;min-width:0;height:58px;border:0;border-radius:12px;color:#fff;font-weight:800;font-size:10.5px;opacity:.55;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
 #tabs button b{font-size:20px;line-height:1}
 #tabs button.on{opacity:1;box-shadow:0 0 0 3px rgba(255,255,255,.55) inset}
-.t0{background:#ef6c00}.t1{background:#1e88e5}.t2{background:#8e24aa}.t3{background:#43a047}.t4{background:#e53935}
+.t0{background:#ef6c00}.t1{background:#1e88e5}.t2{background:#8e24aa}.t3{background:#43a047}.t4{background:#e53935}.t5{background:#00897b}
+.btn.t{background:#00897b}
+#vigv{position:absolute;inset:0;pointer-events:none;display:none;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 55%,rgba(0,0,0,.65) 100%)}
+#pipv{position:absolute;display:none;height:auto!important;aspect-ratio:16/9;object-fit:cover!important;border:2px solid #fff;border-radius:6px;inset:auto}
+#tp{position:fixed;inset:0;background:#000;z-index:20;display:none;overflow:hidden}
+#tpt{position:absolute;left:0;right:0;top:0;padding:0 18px;font-size:38px;line-height:1.45;text-align:center;font-weight:700;color:#fff}
+#tpb{position:fixed;left:12px;right:12px;bottom:14px;z-index:21}
 .card{background:#2c353d;border-radius:14px;padding:12px;margin-bottom:10px}
 .card h3{margin:0 0 8px;font-size:15px;color:#cfd8dc}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:48px;padding:0 14px;border:0;border-radius:12px;background:#455a64;color:#fff;font-size:15px;font-weight:700}
@@ -36,9 +42,9 @@ label.f span{float:right;color:#fff;font-weight:700}
 input[type=range]{width:100%;height:34px}
 select,input[type=text]{width:100%;height:46px;border-radius:10px;border:0;background:#37474f;color:#fff;font-size:16px;padding:0 10px}
 #strip{display:flex;gap:6px;overflow-x:auto;padding:4px 2px 8px}
-.ch{flex:0 0 86px;border-radius:10px;background:#37474f;overflow:hidden;border:3px solid transparent;position:relative}
+.ch{flex:0 0 var(--cw,86px);border-radius:10px;background:#37474f;overflow:hidden;border:3px solid transparent;position:relative}
 .ch.sel{border-color:#1e88e5}
-.ch img{width:100%;height:52px;object-fit:cover;display:block;background:#000}
+.ch img{width:100%;height:calc(var(--cw,86px)*.6);object-fit:cover;display:block;background:#000}
 .ch small{display:block;text-align:center;font-size:11px;padding:2px 0;color:#cfd8dc}
 .ch i{position:absolute;top:2px;left:3px;font-style:normal;font-size:11px;font-weight:800;background:rgba(0,0,0,.6);border-radius:6px;padding:0 4px}
 .hint{color:#90a4ae;font-size:13px;margin:4px 0}
@@ -67,7 +73,7 @@ select,input[type=text]{width:100%;height:46px;border-radius:10px;border:0;backg
 
 </style></head><body>
 <div id="top">
- <div id="pvwrap"><video id="pv" playsinline></video><img id="pi" alt=""><div id="fadev"></div><div id="tov"></div><div id="empty">Ajoute des photos et vidéos dans l'onglet MÉDIAS</div></div>
+ <div id="pvwrap"><video id="pv" playsinline></video><img id="pi" alt=""><div id="vigv"></div><img id="pipv" alt=""><div id="fadev"></div><div id="tov"></div><div id="empty">Ajoute des photos et vidéos dans l'onglet MÉDIAS</div></div>
  <div id="tr"><button id="bplay" onclick="togglePlay()">▶</button><input id="sl" type="range" min="0" max="0" value="0" oninput="scrub(+this.value)"><span id="tm">0:00 / 0:00</span></div>
 </div>
 <div id="pane"></div>
@@ -77,21 +83,24 @@ select,input[type=text]{width:100%;height:46px;border-radius:10px;border:0;backg
  <button class="t2" onclick="tab(2)"><b>🔤</b>TITRES</button>
  <button class="t3" onclick="tab(3)"><b>🎵</b>AUDIO</button>
  <button class="t4" onclick="tab(4)"><b>📤</b>EXPORT</button>
+ <button class="t5" onclick="tab(5)"><b>✨</b>AUTO</button>
 </div>
 <div id="modal"><div class="box"><h2 id="mt"></h2><div id="mb"></div><div class="row" id="mbt"></div></div></div>
 <input id="fv" type="file" accept="video/*,image/*" multiple hidden>
 <input id="fm" type="file" accept="audio/*" hidden>
+<input id="fpip" type="file" accept="video/*,image/*" hidden>
+<div id="tp"><div id="tpt"></div><button class="btn r big" id="tpb" onclick="stopRecord()">⏹ TERMINER L'ENREGISTREMENT</button></div>
 <audio id="pa"></audio>
 <script>
 const $=id=>document.getElementById(id);
-const S={clips:[],titles:[],music:null,voice:null,sel:-1,ratio:"16:9",res:1080,fadeMs:600,trans:"cross",duck:true,pos:0,tab:0,imgMs:4000};
+const S={clips:[],titles:[],music:null,voice:null,sel:-1,ratio:"16:9",res:1080,fadeMs:600,trans:"cross",duck:true,pos:0,tab:0,imgMs:4000,pips:[],markers:[],script:"",tpSpeed:45,zoom:86,voiceStart:0};
 const mu=u=>"/m?u="+encodeURIComponent(u);
 let undo=[],redo=[],playing=false,t0=0,raf=0,curIdx=-2,job=null,jobT0=0,pollT=0,recT=0,recOn=false;
 const N=window.Native||null;
 function fmt(ms){ms=Math.max(0,Math.round(ms/1000));return Math.floor(ms/60)+":"+String(ms%60).padStart(2,"0")}
 function fmt1(ms){return (ms/1000).toFixed(1)+" s"}
-function dur(c){return c.type==="image"?c.imgMs:Math.max(200,(c.out-c.in)/(c.speed||1))}
-function xOf(i){if(S.trans!=="cross"||i<=0||i>=S.clips.length)return 0;const x=Math.min(S.fadeMs,Math.min(dur(S.clips[i]),dur(S.clips[i-1]))/2-1);return x>=200?x:0}
+function dur(c){return c.type!=="video"?c.imgMs:Math.max(200,(c.out-c.in)/(c.speed||1))}
+function xOf(i){if(!["cross","slide","slideup","zoom"].includes(S.trans)||i<=0||i>=S.clips.length||S.clips[i].type==="anim"||S.clips[i-1].type==="anim")return 0;const x=Math.min(S.fadeMs,Math.min(dur(S.clips[i]),dur(S.clips[i-1]))/2-1);return x>=200?x:0}
 function mainDur(i){return dur(S.clips[i])-xOf(i)}
 function starts(){let t=0;return S.clips.map((c,i)=>{const s=t;t+=mainDur(i);return s})}
 function total(){return S.clips.reduce((a,c,i)=>a+mainDur(i),0)}
@@ -102,14 +111,14 @@ function doRedo(){if(!redo.length)return;undo.push(JSON.stringify({c:S.clips,t:S
 
 /* ---------- onglets ---------- */
 function tab(n){S.tab=n;document.querySelectorAll("#tabs button").forEach((b,i)=>b.classList.toggle("on",i===n));render()}
-function render(){const p=$("pane");const keep=p.scrollTop;p.innerHTML=[tabMedias,tabMontage,tabTitres,tabAudio,tabExport][S.tab]();p.scrollTop=keep;if(S.tab===4&&job)updJob()}
+function render(){const p=$("pane");const keep=p.scrollTop;p.innerHTML=[tabMedias,tabMontage,tabTitres,tabAudio,tabExport,tabAuto][S.tab]();p.scrollTop=keep;if(S.tab===4&&job)updJob()}
 function refresh(){const sl=$("sl");sl.max=total();$("empty").style.display=S.clips.length?"none":"flex";S.pos=Math.min(S.pos,total());sl.value=S.pos;show(S.pos,true);render()}
 function setRatio(){const r=S.ratio.split(":");$("pvwrap").style.aspectRatio=r[0]+"/"+r[1];$("pvwrap").style.width=(+r[0]>=+r[1]?"100%":"auto");$("pvwrap").style.height=(+r[0]>=+r[1]?"auto":"34vh")}
 
 /* ---------- projets ---------- */
-function projData(){return JSON.stringify({v:2,clips:S.clips,titles:S.titles,music:S.music,voice:S.voice,ratio:S.ratio,res:S.res,fadeMs:S.fadeMs,trans:S.trans,duck:S.duck,sel:S.sel})}
-function projApply(j){const o=JSON.parse(j);stop();S.clips=(o.clips||[]).filter(c=>c.uri||c.url);S.titles=o.titles||[];S.music=o.music||null;S.voice=o.voice||null;S.ratio=o.ratio||"16:9";S.res=o.res||1080;S.fadeMs=o.fadeMs==null?600:o.fadeMs;S.trans=o.trans||"cross";S.duck=o.duck!==false;S.sel=Math.min(o.sel==null?-1:o.sel,S.clips.length-1);S.pos=0;undo=[];redo=[];curIdx=-2;
- S.clips.forEach(c=>{if(c.uri)c.url=mu(c.uri)});if(S.music&&S.music.uri){S.music.url=mu(S.music.uri)}
+function projData(){return JSON.stringify({v:3,pips:S.pips,markers:S.markers,script:S.script,tpSpeed:S.tpSpeed,clips:S.clips.map(c=>{const o=Object.assign({},c);delete o.exif;return o}),titles:S.titles,music:S.music,voice:S.voice,ratio:S.ratio,res:S.res,fadeMs:S.fadeMs,trans:S.trans,duck:S.duck,sel:S.sel})}
+function projApply(j){const o=JSON.parse(j);stop();S.clips=(o.clips||[]).filter(c=>c.uri||c.url);S.titles=o.titles||[];S.pips=o.pips||[];S.markers=o.markers||[];S.script=o.script||"";S.tpSpeed=o.tpSpeed||45;S.music=o.music||null;S.voice=o.voice||null;S.ratio=o.ratio||"16:9";S.res=o.res||1080;S.fadeMs=o.fadeMs==null?600:o.fadeMs;S.trans=o.trans||"cross";S.duck=o.duck!==false;S.sel=Math.min(o.sel==null?-1:o.sel,S.clips.length-1);S.pos=0;undo=[];redo=[];curIdx=-2;
+ S.clips.forEach(c=>{if(c.uri)c.url=mu(c.uri)});S.pips.forEach(p=>{p.url=mu(p.uri);if(p.type==='image')p.thumb=p.url});if(S.music&&S.music.uri){S.music.url=mu(S.music.uri)}
  if(S.music){$("pa").src=S.music.url}else{$("pa").removeAttribute("src")}setRatio();lastSaved=projData();refresh()}
 let lastSaved="";
 function autosave(){if(!N||!N.projSave)return;try{const d=projData();if(d!==lastSaved&&S.clips.length){N.projSave("_auto",d);lastSaved=d}}catch(_){}}
@@ -159,7 +168,8 @@ function tabMontage(){
  <div class="row"><button class="btn" onclick="mv(-1)">◀ AVANT</button><button class="btn" onclick="mv(1)">APRÈS ▶</button></div>
  <div class="row"><button class="btn b" onclick="splitAt()">✂️ COUPER ICI</button><button class="btn" onclick="dupClip()">⧉ DOUBLER</button><button class="btn r" onclick="delClip()">🗑</button></div>
  <div class="row"><button class="btn" onclick="doUndo()" ${undo.length?"":"disabled"}>↶ ANNULER</button><button class="btn" onclick="doRedo()" ${redo.length?"":"disabled"}>↷ RÉTABLIR</button></div></div>`;
- if(!c)return h+`<div class="card"><div class="hint">Touche un élément pour le régler.</div></div>`;
+ if(!c)return h+`<div class="card"><div class="hint">Touche un élément pour le régler.</div></div>`+tabReperes();
+ if(c.type==="anim")return h+`<div class="card"><h3>Élément ${S.sel+1} : animation</h3><div class="hint">Image fabriquée par l'appli (carte, diapo ou avant/après). Tu peux la déplacer, la doubler ou la supprimer avec les boutons ci-dessus.</div></div>`+tabReperes();
  h+=`<div class="card"><h3>Élément ${S.sel+1} : ${c.type==="image"?"photo":"vidéo"}</h3>`;
  if(c.type==="video"){
   h+=`<label class="f">Début <span id="v_in">${fmt1(c.in)}</span></label><input type="range" min="0" max="${Math.max(0,c.src-200)}" value="${c.in}" oninput="setIn(+this.value)" onchange="commit()">
@@ -174,7 +184,7 @@ function tabMontage(){
  <label class="f">Saturation <span id="v_sat">${c.sat}</span></label><input type="range" min="-100" max="100" value="${c.sat}" oninput="setP('sat',+this.value,'')" onchange="commit()">
  <div class="row"><button class="btn" onclick="rotClip(-90)">⟲ 90°</button><button class="btn" onclick="rotClip(90)">⟳ 90°</button><button class="btn ${c.fade?"g":""}" onclick="togFade()">${c.fade?"✔ FONDU":"FONDU"}</button></div>
  ${c.type==="image"?`<div class="row"><button class="btn ${c.kb?"g":""}" onclick="togKb()">${c.kb?"✔ ZOOM LENT":"ZOOM LENT"}</button></div>`:""}</div>`;
- return h}
+ return h+extraMontage(c)+tabReperes()}
 function curC(){return S.clips[S.sel]}
 function setIn(v){const c=curC();c.in=Math.min(v,c.out-200);$("v_in").textContent=fmt1(c.in);S.pos=starts()[S.sel];refreshLight()}
 function setOut(v){const c=curC();c.out=Math.max(v,c.in+200);$("v_out").textContent=fmt1(c.out);refreshLight()}
@@ -190,6 +200,7 @@ function delClip(){if(S.sel<0)return;snap();S.clips.splice(S.sel,1);S.sel=Math.m
 function rotClip(d){const c=curC();if(!c)return;snap();c.rot=((c.rot+d)%360+360)%360;show(S.pos,true);render()}
 function togFade(){const c=curC();if(!c)return;snap();c.fade=!c.fade;render()}
 function splitAt(){
+ if(curC()&&curC().type==="anim"){toast("Cette animation ne peut pas être coupée.");return}
  const st=starts();let i=S.sel;
  for(let k=0;k<S.clips.length;k++){if(S.pos>=st[k]&&S.pos<st[k]+dur(S.clips[k])){i=k;break}}
  if(i<0)return;const c=S.clips[i],x=xOf(i),local=Math.round(S.pos-st[i])+x,whole=dur(c);
@@ -223,13 +234,14 @@ function tabAudio(){
  return `<div class="card"><h3>🎵 Musique</h3>
  <button class="btn g big" onclick="$('fm').click()">${m?"CHANGER LA MUSIQUE":"➕ CHOISIR UNE MUSIQUE"}</button>
  ${m?`<div class="item"><span>${esc(m.name)}</span><button onclick="delMusic()">🗑</button></div>
- <label class="f">Volume de la musique <span id="v_mv">${m.vol} %</span></label><input type="range" min="0" max="150" value="${m.vol}" oninput="m_v(+this.value)">`:`<div class="hint">La musique se répète si elle est plus courte que le montage.</div>`}</div>
+ <label class="f">Volume de la musique <span id="v_mv">${m.vol} %</span></label><input type="range" min="0" max="150" value="${m.vol}" oninput="m_v(+this.value)">${audioExtra(m)}`:`<div class="hint">La musique se répète si elle est plus courte que le montage.</div>`}</div>
  <div class="card"><h3>🎙 Voix off</h3>
  <button class="btn ${recOn?"r":"g"} big" onclick="recToggle()">${recOn?"⏹ ARRÊTER L'ENREGISTREMENT":"⏺ ENREGISTRER LA VOIX"}</button>
  <div class="hint" id="rectxt">${recOn?"Enregistrement en cours…":"La voix démarre à l'endroit du curseur ("+fmt(S.pos)+")."}</div>
  ${v?`<div class="item"><span>Voix off · départ ${fmt(v.startMs)}</span><button onclick="delVoice()">🗑</button></div>
  <div class="row"><button class="btn" onclick="N&&N.playVoice(S.voice.path)">▶ ÉCOUTER</button></div>
  <label class="f">Volume de la voix <span id="v_vv">${v.vol} %</span></label><input type="range" min="0" max="200" value="${v.vol}" oninput="S.voice.vol=+this.value;$('v_vv').textContent=this.value+' %'">`:""}
+ ${voiceExtra(v)}
  <label class="f" style="display:flex;gap:10px;align-items:center;margin-top:12px"><input type="checkbox" ${S.duck?"checked":""} onchange="S.duck=this.checked" style="width:26px;height:26px"> Baisser la musique quand je parle</label></div>
  <div class="card"><h3>🥁 Montage automatique sur le rythme</h3>
  <div class="hint">L'appli écoute la musique, trouve le tempo et règle la durée de chaque photo ou vidéo pour que les changements tombent sur les temps.</div>
@@ -238,16 +250,16 @@ function tabAudio(){
  <button class="btn g big" onclick="autoRhythm()" ${S.music&&S.clips.length?"":"disabled"}>🥁 LANCER LE MONTAGE AUTO</button>
  <div class="hint" id="rhmsg">${S.music&&S.clips.length?"Prêt.":"Il faut d'abord au moins un élément et une musique."}</div></div>`}
 $("fm").onchange=e=>{const f=e.target.files[0];let p=[];try{p=JSON.parse(N.lastPicked())}catch(_){}
- if(f){const uu=p[0]?p[0].uri:"";S.music={url:uu?mu(uu):URL.createObjectURL(f),uri:uu,name:f.name,vol:100};$("pa").src=S.music.url}e.target.value="";render()};
+ if(f){const uu=p[0]?p[0].uri:"";S.music={url:uu?mu(uu):URL.createObjectURL(f),uri:uu,name:f.name,vol:100,fin:1000,fout:2000,bass:0,treble:0};$("pa").src=S.music.url}e.target.value="";render()};
 function m_v(v){S.music.vol=v;$("v_mv").textContent=v+" %";$("pa").volume=Math.min(1,v/100)}
 function delMusic(){S.music=null;$("pa").removeAttribute("src");render()}
 function delVoice(){S.voice=null;render()}
 function recToggle(){
  if(!N){toast("Enregistrement disponible dans l'appli.");return}
- if(recOn){const p=N.recStop();recOn=false;if(p)S.voice={path:p,startMs:Math.round(S.pos),vol:100};else toast("L'enregistrement a échoué.");render();return}
- N.askMic()}
-window.onMic=ok=>{if(!ok){toast("Autorise le micro pour enregistrer la voix.");return}
- S.pos=S.pos||0;if(N.recStart()){recOn=true;render()}else toast("Impossible de démarrer le micro.")};
+ if(recOn){stopRecord();return}
+ tpMode=false;N.askMic()}
+window.onMic=ok=>{if(!ok){tpMode=false;toast("Autorise le micro pour enregistrer la voix.");return}
+ if(N.recStart()){recOn=true;recT0=Date.now();S.voiceStart=Math.round(S.pos);if(tpMode)startTp();else render()}else{tpMode=false;toast("Impossible de démarrer le micro.")}};
 window.onBack=()=>{if($("modal").style.display==="flex"){closeModal();return true}if(S.tab!==0){tab(0);return true}return false};
 
 
@@ -280,8 +292,8 @@ async function autoRhythm(){
   // duree utile dans le montage : un multiple de temps ; les coupes tombent sur les temps
   let want=len+(i===0?Math.min(r.first,len):0);
   const x=(S.trans==="cross"&&i>0)?Math.min(S.fadeMs,want/2-1):0;want+=(x>=200?x:0);
-  if(c.type==="image"){c.imgMs=Math.round(want)}
-  else{const sp=c.speed||1,need=want*sp;
+  if(c.type==="anim"){}else if(c.type==="image"){c.imgMs=Math.round(want)}
+  else if(c.type==="video"){const sp=c.speed||1,need=want*sp;
    if(c.src>=need){const slack=c.src-need;c.in=Math.round(slack*0.25);c.out=Math.round(c.in+need)}
    else{c.in=0;c.out=c.src}}});
  refresh();
@@ -294,13 +306,14 @@ function show(pos,seek){
  let tt="";const hv=$("pvwrap").clientHeight||200;
  S.titles.forEach(t=>{if(pos>=t.from&&pos<=t.to){const el=$("tov");el.style.color=t.color;el.style.fontSize=(t.size*hv)+"px";el.style.top=t.pos===0?"6%":(t.pos===1?"40%":"");el.style.bottom=t.pos===2?"6%":"";tt=t.text}});
  $("tov").textContent=tt;if(!tt){$("tov").style.top="";$("tov").style.bottom=""}
- if(i<0){pv.removeAttribute("src");pv.style.display="none";pi.style.display="none";curIdx=-2;return}
+ if(i<0){pv.removeAttribute("src");pv.style.display="none";pi.style.display="none";$("vigv").style.display="none";showPip(pos);curIdx=-2;return}
  const c=S.clips[i],local=pos-st[i]+xOf(i);
- const filt=`brightness(${1+c.bright/100}) contrast(${1+c.contrast/100}) saturate(${1+c.sat/100})`;
- const tr=`rotate(${c.rot}deg)`;
+ const filt=cssFilter(c);
+ const tr=`rotate(${c.rot}deg)`+(c.mirror?" scaleX(-1)":"");
+ $("vigv").style.display=(c.vig||c.filter==="vintage")?"block":"none";showPip(pos);
  let f=0;if(S.trans==="dip"&&S.fadeMs>0&&c.fade){const d=dur(c),fm=Math.min(S.fadeMs,d/2);if(local<fm)f=1-local/fm;if(local>d-fm)f=Math.max(f,(local-(d-fm))/fm)}
  $("fadev").style.opacity=Math.max(0,Math.min(1,f));
- if(c.type==="image"){pv.pause();pv.style.display="none";pi.style.display="block";if(pi.getAttribute("src")!==c.url)pi.src=c.url;pi.style.filter=filt;const kp=Math.max(0,Math.min(1,local/dur(c)));pi.style.transform=tr+(c.kb?" scale("+(1+0.18*(i%2===0?kp:1-kp))+")":"")}
+ if(c.type==="image"||c.type==="anim"){pv.pause();pv.style.display="none";pi.style.display="block";const su=c.type==="anim"?mu(c.frames[Math.max(0,Math.min(c.frames.length-1,Math.floor(local/c.frameMs)))]):c.url;if(pi.getAttribute("src")!==su)pi.src=su;pi.style.filter=filt;const kp=Math.max(0,Math.min(1,local/dur(c)));pi.style.transform=tr+(c.kb&&c.type==="image"?" scale("+(1+0.18*(i%2===0?kp:1-kp))+")":"")}
  else{pi.style.display="none";pv.style.display="block";pv.style.filter=filt;pv.style.transform=tr;pv.volume=Math.min(1,c.vol/100);
   pv.playbackRate=c.speed||1;const want=(c.in+local*(c.speed||1))/1000;
   if(curIdx!==i||pv.getAttribute("data-u")!==c.url){curIdx=i;pv.setAttribute("data-u",c.url);pv.src=c.url;pv.onloadedmetadata=()=>{try{pv.currentTime=want}catch(_){}if(playing)pv.play().catch(()=>{})}}
@@ -315,48 +328,57 @@ function play(){if(S.pos>=total()-50)S.pos=0;playing=true;t0=performance.now()-S
 function stop(){playing=false;cancelAnimationFrame(raf);$("bplay").textContent="▶";$("pv").pause();$("pa").pause()}
 
 /* ---------- onglet EXPORT ---------- */
-function outSize(){const sh=S.res,r=S.ratio.split(":").map(Number);let w,h;
+function outSize2(ratio,sh){const r=ratio.split(":").map(Number);let w,h;
  if(r[0]>=r[1]){h=sh;w=Math.round(sh*r[0]/r[1])}else{w=sh;h=Math.round(sh*r[1]/r[0])}
  return {w:w-(w%2),h:h-(h%2)}}
+function outSize(){return outSize2(S.ratio,S.res)}
 function tabExport(){const sz=outSize();
  return `<div class="card"><h3>Format de la vidéo</h3>
  <label class="f">Format</label><select onchange="S.ratio=this.value;setRatio();render();show(S.pos,true)">${[["16:9","Paysage 16:9 (YouTube, TV)"],["9:16","Vertical 9:16 (Reels, TikTok, Story)"],["1:1","Carré 1:1 (Instagram)"],["4:5","Portrait 4:5 (Instagram)"],["4:3","Classique 4:3"]].map(a=>`<option value="${a[0]}" ${S.ratio===a[0]?"selected":""}>${a[1]}</option>`).join("")}</select>
  <label class="f">Qualité</label><select onchange="S.res=+this.value;render()">${[[720,"HD 720p (léger)"],[1080,"Full HD 1080p (conseillé)"],[2160,"Ultra HD 4K (lourd)"]].map(a=>`<option value="${a[0]}" ${S.res===a[0]?"selected":""}>${a[1]}</option>`).join("")}</select>
- <label class="f">Transition entre les éléments</label><select onchange="S.trans=this.value;refresh()">${[["cross","Fondu enchaîné (les deux images se mélangent)"],["dip","Fondu au noir"],["none","Aucune (coupe franche)"]].map(a=>`<option value="${a[0]}" ${S.trans===a[0]?"selected":""}>${a[1]}</option>`).join("")}</select>
- <label class="f">Durée du fondu <span id="v_fd">${(S.fadeMs/1000).toFixed(1)} s</span></label><input type="range" min="0" max="2000" step="100" value="${S.fadeMs}" oninput="S.fadeMs=+this.value;$('v_fd').textContent=(this.value/1000).toFixed(1)+' s'" onchange="refresh()">
- <div class="hint">Résultat : ${sz.w} × ${sz.h}, ${fmt(total())}. Enregistré dans Films / MONTAGE.<br>L'aperçu montre les coupes sans le mélange des images : le fondu enchaîné est appliqué à l'export. L'export continue même si tu quittes l'appli.</div></div>
+ <label class="f">Transition entre les éléments</label><select onchange="S.trans=this.value;refresh()">${TRANS.map(a=>`<option value="${a[0]}" ${S.trans===a[0]?"selected":""}>${a[1]}</option>`).join("")}</select>
+ <label class="f">Durée de la transition <span id="v_fd">${(S.fadeMs/1000).toFixed(1)} s</span></label><input type="range" min="0" max="2000" step="100" value="${S.fadeMs}" oninput="S.fadeMs=+this.value;$('v_fd').textContent=(this.value/1000).toFixed(1)+' s'" onchange="refresh()">
+ <div class="hint">Résultat : ${sz.w} × ${sz.h}, ${fmt(total())}. Enregistré dans Films / MONTAGE.<br>L'aperçu montre les coupes sans le mélange des images : les transitions sont appliquées à l'export. L'export continue même si tu quittes l'appli.</div></div>
  <button class="btn r big" id="bgo" onclick="startExport()" ${job&&job.run?"disabled":""}>🚀 EXPORTER LA VIDÉO</button>
+ <div class="row"><button class="btn b" id="bchat" onclick="startExport({chat:true})" ${job&&job.run?"disabled":""}>📱 POUR WHATSAPP, LINE, TELEGRAM<br><small>moins de 16 Mo</small></button><button class="btn p" id="bmulti" onclick="startExport({multi:true})" ${job&&job.run?"disabled":""}>🎞 LES 3 FORMATS<br><small>paysage, vertical, carré</small></button></div>
  <div class="card" style="margin-top:10px" id="prog">
  <div class="hgw"><div class="hgflip" id="hgflip">${hgSVG()}</div><div class="hgr"><div class="hgp" id="ptxt">0 %</div>
  <div class="clocks"><span>⏱ ÉCOULÉ <span id="cEl">00:00</span></span><span>⌛ RESTE <span id="cLeft">--:--</span></span></div></div></div>
  <div class="bar"><i id="barfill"></i></div>
  <div class="banner" id="banner">PRÊT</div><div class="msg" id="pmsg"></div>
  <div class="row"><button class="btn r" id="bstop" style="flex:1" onclick="stopExport()" disabled>⏹ ARRÊTER</button></div></div>`}
-function startExport(){
+function buildSpec(o){o=o||{};const sz=outSize2(o.ratio||S.ratio,o.res||S.res);
+ const spec={w:sz.w,h:sz.h,fadeMs:S.fadeMs,trans:S.trans,
+  clips:S.clips.map(c=>c.type==="anim"?{type:"anim",uri:c.uri,frames:c.frames,frameMs:c.frameMs}:{uri:c.uri,type:c.type,in:c.in,out:c.out,imgMs:c.imgMs,vol:c.vol,bright:c.bright,contrast:c.contrast,sat:c.sat,rot:c.rot,fade:c.fade,speed:c.speed||1,kb:!!c.kb,filter:c.filter||"",vig:!!c.vig,mirror:!!c.mirror}),
+  titles:S.titles.map(t=>({text:t.text,from:t.from,to:t.to,pos:t.pos,size:t.size,color:t.color})),
+  pips:S.pips.map(p=>({uri:p.uri,type:p.type,from:p.from,durMs:p.durMs,pos:p.pos,scale:p.scale})),
+  duck:S.duck};
+ if(S.music&&S.music.uri)spec.music={uri:S.music.uri,vol:S.music.vol,fin:mf(S.music,"fin",1000),fout:mf(S.music,"fout",2000),bass:mf(S.music,"bass",0),treble:mf(S.music,"treble",0)};
+ if(S.voice)spec.voice={path:S.voice.path,startMs:S.voice.startMs,vol:S.voice.vol,bass:S.voice.bass||0,treble:S.voice.treble||0};
+ if(o.bitrate)spec.bitrate=o.bitrate;return spec}
+function startExport(o){
  if(!S.clips.length){toast("Ajoute d'abord des photos ou des vidéos.");return}
  if(S.clips.some(c=>!c.uri)){toast("Un élément n'a pas son fichier d'origine. Retire-le et ajoute-le de nouveau.");return}
  if(!N){toast("L'export fonctionne dans l'appli Android.");return}
- stop();const sz=outSize();
- const spec={w:sz.w,h:sz.h,fadeMs:S.fadeMs,trans:S.trans,
-  clips:S.clips.map(c=>({uri:c.uri,type:c.type,in:c.in,out:c.out,imgMs:c.imgMs,vol:c.vol,bright:c.bright,contrast:c.contrast,sat:c.sat,rot:c.rot,fade:c.fade,speed:c.speed||1,kb:!!c.kb})),
-  titles:S.titles.map(t=>({text:t.text,from:t.from,to:t.to,pos:t.pos,size:t.size,color:t.color})),
-  duck:S.duck};
- if(S.music&&S.music.uri)spec.music={uri:S.music.uri,vol:S.music.vol};
- if(S.voice)spec.voice={path:S.voice.path,startMs:S.voice.startMs,vol:S.voice.vol};
- job={run:true,pct:0};jobT0=Date.now();N.exportStart(JSON.stringify(spec));
- clearInterval(pollT);pollT=setInterval(pollJob,400);render();$("prog").scrollIntoView({behavior:"smooth",block:"center"})}
+ stop();o=o||{};
+ if(o.multi)queue=["16:9","9:16","1:1"].map(r=>({ratio:r,res:Math.min(S.res,1080)}));
+ else if(o.chat){const sec=Math.max(1,total()/1000);const bps=Math.floor(14*8*1048576/sec)-128000;queue=[{res:sec>240?480:720,bitrate:Math.max(300000,Math.min(5000000,bps))}]}
+ else queue=[{}];
+ job={run:true,pct:0,total:queue.length,idx:0,results:[],chat:!!o.chat,hold:0};jobT0=Date.now();runJob()}
+function runJob(){const o=queue[job.idx];job.hold=Date.now()+1500;N.exportStart(JSON.stringify(buildSpec(o)));
+ clearInterval(pollT);pollT=setInterval(pollJob,400);render();if($("prog"))$("prog").scrollIntoView({behavior:"smooth",block:"center"})}
 function stopExport(){if(N)N.exportCancel()}
-function pollJob(){if(!N||!job)return;const st=N.exportState();job.pct=N.exportProgress();
- if(st===2){clearInterval(pollT);job.run=false;job.done=true;job.res=N.exportResult();updJob();finishUp(true)}
+function pollJob(){if(!N||!job||Date.now()<job.hold)return;const st=N.exportState();job.pct=(job.idx*100+N.exportProgress())/job.total;
+ if(st===2){job.results.push(N.exportResult());if(job.idx+1<job.total){job.idx++;runJob();return}clearInterval(pollT);job.run=false;job.done=true;job.res=job.results[job.results.length-1];updJob();finishUp(true)}
  else if(st===3){clearInterval(pollT);job.run=false;job.err=N.exportError();updJob();finishUp(false)}
  else updJob()}
 function updJob(){if(!$("prog")||!job)return;const p=job.pct||0;
  hgSet(job.done?100:p,job.run);$("barfill").style.width=(job.done?100:p)+"%";
  const el=(Date.now()-jobT0)/1000;$("cEl").textContent=clk(el);
  $("cLeft").textContent=job.done?"00:00":(p>3?clk(el*(100-p)/p):"--:--");
- $("bgo").disabled=!!job.run;$("bstop").disabled=!job.run;
+ $("bgo").disabled=!!job.run;$("bchat").disabled=!!job.run;$("bmulti").disabled=!!job.run;$("bstop").disabled=!job.run;
  const b=$("banner");
- if(job.run){b.className="banner run";b.textContent="EN COURS…"}
+ if(job.run){b.className="banner run";b.textContent="EN COURS…"+(job.total>1?" ("+(job.idx+1)+"/"+job.total+")":"")}
  else if(job.done){b.className="banner done";b.textContent="TERMINÉ"}
  else if(job.err==="annulé"){b.className="banner stop";b.textContent="ARRÊTÉ"}
  else{b.className="banner err";b.textContent="ERREUR"}
@@ -365,7 +387,7 @@ function clk(s){s=Math.max(0,Math.round(s));return String(Math.floor(s/60)).padS
 function beep(){try{const a=new (window.AudioContext||window.webkitAudioContext)();[880,1175,1568].forEach((f,i)=>{const o=a.createOscillator(),g=a.createGain();o.frequency.value=f;o.connect(g);g.connect(a.destination);const t=a.currentTime+i*.18;g.gain.setValueAtTime(.25,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);o.start(t);o.stop(t+.17)})}catch(_){}}
 function finishUp(ok){
  if(ok){beep();if(N)N.buzz();const f=$("hgflip");if(f){f.classList.remove("fin");void f.offsetWidth;f.classList.add("fin")}
-  modal("ok","✔ TERMINÉ","Ta vidéo est dans <b>Films / MONTAGE</b>.<br>Durée : "+fmt(total())+"<br>Temps d'export : "+clk((Date.now()-jobT0)/1000),[["▶ VOIR LA VIDÉO","g",()=>{closeModal();N.viewVideo(job.res)}],["FERMER","",closeModal]])}
+  modal("ok","✔ TERMINÉ",(job.total>1?job.total+" vidéos sont":"Ta vidéo est")+" dans <b>Films / MONTAGE</b>.<br>Durée : "+fmt(total())+"<br>Temps d'export : "+clk((Date.now()-jobT0)/1000),[["▶ VOIR LA VIDÉO","g",()=>{closeModal();N.viewVideo(job.res)}],["📤 ENVOYER","b",()=>{closeModal();N.shareVideo(job.res)}],["FERMER","",closeModal]])}
  else if(job.err!=="annulé")modal("err","ERREUR","L'export a échoué.<br><small>"+esc(job.err)+"</small>",[["FERMER","",closeModal]])}
 /* ---------- fenêtre ---------- */
 function modal(kind,title,body,btns){const m=$("modal");m.className=kind;$("mt").textContent=title;$("mb").innerHTML=body;const b=$("mbt");b.innerHTML="";
@@ -393,6 +415,352 @@ function hgSet(pct,run){const p=Math.max(0,Math.min(1,pct/100)),c=hgCol(p),h=82*
  $("hgB").setAttribute("d",d);$("hgB").setAttribute("fill",c);$("hgBh").setAttribute("d",d);
  const S=$("hgS");S.setAttribute("y2",run&&p<1&&p>0?(192-70*p-6):108);S.setAttribute("stroke",c);
  $("ptxt").textContent=Math.round(pct)+" %";$("ptxt").style.color=c}
+
+/* ================= VERSION 3 ================= */
+const AUTO={busy:false,res:null};
+let tpMode=false,tpRaf=0,tpY=0,tpLast=0,recT0=0,queue=[];
+const TRANS=[["cross","Fondu enchaîné (les deux images se mélangent)"],["dip","Fondu au noir"],["slide","Glisser (la suite arrive par la droite)"],["slideup","Glisser (la suite arrive par le bas)"],["zoom","Zoom (la suite grandit au centre)"],["none","Aucune (coupe franche)"]];
+const FILTERS=[["","Aucun"],["bw","Noir et blanc"],["sepia","Sépia"],["warm","Chaud"],["cool","Froid"],["vintage","Vintage (sépia + bords sombres)"]];
+function cssFilter(c){const base=`brightness(${1+(c.bright||0)/100}) contrast(${1+(c.contrast||0)/100}) saturate(${1+(c.sat||0)/100})`;
+ const f={bw:" grayscale(1)",sepia:" sepia(1)",warm:" sepia(.35) saturate(1.2)",cool:" hue-rotate(15deg) saturate(.9)",vintage:" sepia(.6) contrast(1.1)"}[c.filter||""]||"";return base+f}
+function setMsg(t){const e=$("automsg");if(e)e.textContent=t}
+const wait0=()=>new Promise(r=>setTimeout(r,0));
+function mf(o,k,d){return o&&o[k]!=null?o[k]:d}
+
+/* ---------- style d'un élément ---------- */
+function setFilter(v){const c=curC();if(!c)return;snap();c.filter=v;show(S.pos,true)}
+function togP(k){const c=curC();if(!c)return;snap();c[k]=!c[k];render();show(S.pos,true)}
+function nudge(k,d){const c=curC();if(!c||c.type!=="video")return;if(k==="in")c.in=Math.max(0,Math.min(c.out-200,c.in+d));else c.out=Math.max(c.in+200,Math.min(c.src,c.out+d));refresh()}
+function localSrc(){const c=curC(),local=S.pos-starts()[S.sel]+xOf(S.sel);return Math.round(c.in+local*(c.speed||1))}
+function hereIn(){const c=curC();if(!c||c.type!=="video")return;snap();c.in=Math.max(0,Math.min(c.out-200,localSrc()));refresh()}
+function hereOut(){const c=curC();if(!c||c.type!=="video")return;snap();c.out=Math.max(c.in+200,Math.min(c.src,localSrc()));refresh()}
+function addMarker(){S.markers.push(Math.round(S.pos));S.markers.sort((a,b)=>a-b);render()}
+function delMarker(i){S.markers.splice(i,1);render()}
+function goTo(ms){S.pos=ms;$("sl").value=ms;show(ms,true)}
+function setZoom(v){S.zoom=v;document.documentElement.style.setProperty("--cw",v+"px");$("v_zoom").textContent=v}
+function extraMontage(c){
+ let h="";
+ if(c.type==="video"){
+  h+=`<div class="card"><h3>🎯 Réglage précis</h3>
+  <div class="row"><button class="btn b" onclick="hereIn()">DÉBUT = CURSEUR</button><button class="btn b" onclick="hereOut()">FIN = CURSEUR</button></div>
+  <label class="f">Début : ${fmt1(c.in)}</label><div class="row"><button class="btn" onclick="nudge('in',-100)">◀ 0,1 s</button><button class="btn" onclick="nudge('in',-33)">◀ 1 image</button><button class="btn" onclick="nudge('in',33)">1 image ▶</button><button class="btn" onclick="nudge('in',100)">0,1 s ▶</button></div>
+  <label class="f">Fin : ${fmt1(c.out)}</label><div class="row"><button class="btn" onclick="nudge('out',-100)">◀ 0,1 s</button><button class="btn" onclick="nudge('out',-33)">◀ 1 image</button><button class="btn" onclick="nudge('out',33)">1 image ▶</button><button class="btn" onclick="nudge('out',100)">0,1 s ▶</button></div></div>`}
+ h+=`<div class="card"><h3>🎨 Style</h3><label class="f">Filtre</label><select onchange="setFilter(this.value)">${FILTERS.map(f=>`<option value="${f[0]}" ${(c.filter||"")===f[0]?"selected":""}>${f[1]}</option>`).join("")}</select>
+ <div class="row"><button class="btn ${c.vig?"g":""}" onclick="togP('vig')">${c.vig?"✔ ":""}VIGNETTE</button><button class="btn ${c.mirror?"g":""}" onclick="togP('mirror')">${c.mirror?"✔ ":""}MIROIR</button></div>
+ ${c.type==="image"?`<label class="f">Légende de la photo (mode exposition)</label><input type="text" value="${esc(c.cap||"")}" onchange="curC().cap=this.value" placeholder="Ex. Coucher de soleil, Pattaya">`:""}</div>`;
+ return h}
+function tabReperes(){
+ return `<div class="card"><h3>📍 Repères et affichage</h3>
+ <div class="row"><button class="btn" onclick="addMarker()">📍 REPÈRE ICI (${fmt(S.pos)})</button></div>
+ ${S.markers.map((m,i)=>`<div class="item"><span>Repère ${i+1} · ${fmt(m)}</span><button style="background:#1e88e5" onclick="goTo(${m})">➜</button><button onclick="delMarker(${i})">🗑</button></div>`).join("")}
+ <label class="f">Taille des vignettes <span id="v_zoom">${S.zoom}</span></label><input type="range" min="56" max="170" value="${S.zoom}" oninput="setZoom(+this.value)"></div>
+ ${pipCard()}`}
+$("fpip").onchange=e=>{const f=e.target.files[0];let p=[];try{p=JSON.parse(N.lastPicked())}catch(_){}
+ if(!f||!p[0]){e.target.value="";return}
+ const image=(f.type||"").startsWith("image"),u=mu(p[0].uri);const o={uri:p[0].uri,url:u,type:image?"image":"video",name:f.name,from:Math.round(S.pos),durMs:3000,pos:1,scale:.3,thumb:image?u:"",max:30000};
+ snap();S.pips.push(o);
+ if(!image){const v=document.createElement("video");v.preload="metadata";v.muted=true;v.src=u;
+  v.onloadedmetadata=()=>{o.max=Math.round(v.duration*1000)||30000;o.durMs=Math.min(o.max,5000);try{v.currentTime=Math.min(.5,v.duration/2)}catch(_){}};
+  v.onseeked=()=>{try{const cv=document.createElement("canvas");cv.width=160;cv.height=90;cv.getContext("2d").drawImage(v,0,0,160,90);o.thumb=cv.toDataURL("image/jpeg",.7)}catch(_){}v.onseeked=null;render();show(S.pos,true)}}
+ e.target.value="";render()};
+function delPip(i){snap();S.pips.splice(i,1);render();show(S.pos,true)}
+function pipCard(){return `<div class="card"><h3>🖼 Image dans l'image</h3><div class="hint">Une petite photo ou vidéo posée par-dessus le montage, à partir du curseur (${fmt(S.pos)}).</div>
+ <button class="btn b big" onclick="$('fpip').click()">➕ AJOUTER</button>
+ ${S.pips.map((p,i)=>`<div class="item"><span>${p.type==="image"?"🖼":"🎞"} ${esc(p.name)} · dès ${fmt(p.from)}</span><button onclick="delPip(${i})">🗑</button></div>
+ <label class="f">Durée <span id="pd${i}">${fmt1(p.durMs)}</span></label><input type="range" min="500" max="${p.type==="image"?30000:p.max}" step="250" value="${p.durMs}" oninput="S.pips[${i}].durMs=+this.value;$('pd${i}').textContent=fmt1(+this.value)">
+ <div class="row"><select onchange="S.pips[${i}].pos=+this.value;show(S.pos,true)">${["Haut gauche","Haut droite","Bas gauche","Bas droite","Centre"].map((x,k)=>`<option value="${k}" ${p.pos===k?"selected":""}>${x}</option>`).join("")}</select><select onchange="S.pips[${i}].scale=+this.value;show(S.pos,true)">${[.2,.3,.4,.5].map(x=>`<option value="${x}" ${p.scale===x?"selected":""}>${Math.round(x*100)} %</option>`).join("")}</select></div>`).join("")}</div>`}
+function showPip(pos){const el=$("pipv");const p=S.pips.find(q=>pos>=q.from&&pos<q.from+q.durMs);
+ if(!p){el.style.display="none";return}
+ el.style.display="block";const s=p.thumb||p.url;if(el.getAttribute("src")!==s)el.src=s;
+ el.style.width=(p.scale*100)+"%";el.style.left=(p.pos%2===0||p.pos===4)?"":"auto";el.style.right="auto";el.style.top="auto";el.style.bottom="auto";
+ if(p.pos===4){el.style.left=((1-p.scale)*50)+"%";el.style.top="25%"}
+ else{if(p.pos%2===0)el.style.left="2%";else el.style.right="2%";if(p.pos<2)el.style.top="3%";else el.style.bottom="3%"}}
+
+/* ---------- audio : réglages avancés ---------- */
+function setM(k,v,u,id){S.music[k]=v;$(id).textContent=v+u}
+function audioExtra(m){
+ return `<label class="f">Apparition en fondu <span id="v_mfi">${mf(m,"fin",1000)} ms</span></label><input type="range" min="0" max="5000" step="250" value="${mf(m,"fin",1000)}" oninput="setM('fin',+this.value,' ms','v_mfi')">
+ <label class="f">Disparition en fondu <span id="v_mfo">${mf(m,"fout",2000)} ms</span></label><input type="range" min="0" max="8000" step="250" value="${mf(m,"fout",2000)}" oninput="setM('fout',+this.value,' ms','v_mfo')">
+ <label class="f">Graves <span id="v_mb">${mf(m,"bass",0)} dB</span></label><input type="range" min="-10" max="10" value="${mf(m,"bass",0)}" oninput="setM('bass',+this.value,' dB','v_mb')">
+ <label class="f">Aigus <span id="v_mt">${mf(m,"treble",0)} dB</span></label><input type="range" min="-10" max="10" value="${mf(m,"treble",0)}" oninput="setM('treble',+this.value,' dB','v_mt')">
+ <button class="btn big" onclick="normMusic()">⚖ NIVELER LE VOLUME AUTOMATIQUEMENT</button><div class="hint" id="nmsg"></div>`}
+async function decodeUrl(url,maxMB){
+ const r=await fetch(url,{headers:{Range:"bytes=0-0"}});const cr=r.headers.get("Content-Range");const tot=cr?+cr.split("/")[1]:0;
+ if(tot>maxMB*1048576)throw new Error("fichier trop gros");
+ const buf=await (await fetch(url)).arrayBuffer();const AC=window.AudioContext||window.webkitAudioContext;const ctx=new AC();
+ const ab=await ctx.decodeAudioData(buf);try{ctx.close()}catch(_){}return ab}
+async function normMusic(){
+ const m=S.music;if(!m)return;const e=$("nmsg");if(e)e.textContent="Écoute de la musique…";
+ try{const ab=await decodeUrl(m.url,60),ch=ab.getChannelData(0);let s=0,pk=0,n=0;
+  for(let i=0;i<ch.length;i+=4){const v=ch[i];s+=v*v;n++;const a=Math.abs(v);if(a>pk)pk=a}
+  const rms=Math.sqrt(s/n)||.05;let g=0.12/rms;g=Math.min(g,1/(pk||1),1.5);g=Math.max(.3,g);
+  m.vol=Math.round(g*100);if(e)e.textContent="Volume réglé à "+m.vol+" %.";render()}
+ catch(x){if(e)e.textContent="Impossible d'analyser cette musique (trop grosse ou format non lu)."}}
+function voiceExtra(v){
+ return `${v?`<div class="row"><button class="btn ${(v.treble||0)>0?"g":""}" onclick="S.voice.bass=(S.voice.treble||0)>0?0:-3;S.voice.treble=(S.voice.treble||0)>0?0:3;render()">${(v.treble||0)>0?"✔ ":""}VOIX PLUS CLAIRE</button></div>`:""}
+ <label class="f">Texte à lire (téléprompteur) et sous-titres</label><textarea id="sc" style="width:100%;height:110px;border-radius:10px;border:0;background:#37474f;color:#fff;font-size:16px;padding:8px" placeholder="Écris ici ce que tu vas dire, une phrase par ligne ou avec des points.">${esc(S.script||"")}</textarea>
+ <label class="f">Vitesse de défilement <span id="v_tps">${S.tpSpeed}</span></label><input type="range" min="15" max="140" value="${S.tpSpeed}" oninput="S.tpSpeed=+this.value;$('v_tps').textContent=this.value">
+ <div class="row"><button class="btn g" onclick="openTp()">📜 ENREGISTRER AVEC LE TEXTE QUI DÉFILE</button><button class="btn p" onclick="subsFromScript()">💬 SOUS-TITRES DEPUIS LE TEXTE</button></div>
+ <div class="hint">Le texte défile à l'écran pendant que tu parles. Les sous-titres sont répartis sur la durée de ta voix (ou du montage si tu n'as pas enregistré).</div>`}
+function openTp(){if(!N){toast("Disponible dans l'appli.");return}const tx=($("sc")?$("sc").value:S.script).trim();S.script=tx;if(!tx){toast("Écris d'abord le texte à lire.");return}tpMode=true;N.askMic()}
+function startTp(){$("tp").style.display="block";const t=$("tpt");t.textContent=S.script;tpY=$("tp").clientHeight*.55;tpLast=performance.now();
+ const loop=ts=>{const dt=(ts-tpLast)/1000;tpLast=ts;tpY-=S.tpSpeed*dt;t.style.transform="translateY("+tpY+"px)";tpRaf=requestAnimationFrame(loop)};tpRaf=requestAnimationFrame(loop)}
+function tpStopScroll(){cancelAnimationFrame(tpRaf);$("tp").style.display="none";tpMode=false}
+function stopRecord(){const p=N.recStop();recOn=false;const d=Date.now()-recT0;tpStopScroll();
+ if(p)S.voice={path:p,startMs:S.voiceStart||0,vol:100,durMs:d,bass:0,treble:0};else toast("L'enregistrement a échoué.");render()}
+function subsFromScript(){const tx=(($("sc")&&$("sc").value)||S.script||"").trim();S.script=tx;if(!tx){toast("Écris d'abord le texte.");return}
+ const parts=tx.split(/(?<=[.!?…])\s+|\n+/).map(x=>x.trim()).filter(Boolean);
+ const start=S.voice?S.voice.startMs:0,span=S.voice&&S.voice.durMs?S.voice.durMs:Math.max(1000,total()-start);
+ const tot=parts.reduce((a,x)=>a+x.length,0)||1;snap();S.titles=S.titles.filter(t=>t.auto!=="sub");let t=start;
+ parts.forEach(x=>{const d=span*x.length/tot;S.titles.push({text:x,from:Math.round(t),to:Math.round(t+d),pos:2,size:.055,color:"#FFFFFF",auto:"sub"});t+=d});
+ render();show(S.pos,true);toast(parts.length+" sous-titres créés (voir l'onglet TITRES).")}
+
+/* ---------- analyse d'images ---------- */
+function loadImg(url){return new Promise((ok,ko)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=ko;i.src=url})}
+function loadVideo(url){return new Promise((ok,ko)=>{const v=document.createElement("video");v.muted=true;v.preload="auto";v.playsInline=true;v.onloadedmetadata=()=>ok(v);v.onerror=ko;v.src=url})}
+function seekVid(v,t){return new Promise(ok=>{let d=false;const h=()=>{if(d)return;d=true;v.removeEventListener("seeked",h);ok()};v.addEventListener("seeked",h);setTimeout(h,1500);try{v.currentTime=t}catch(_){h()}})}
+function imgData(src,w,h){const cv=document.createElement("canvas");cv.width=w;cv.height=h;const g=cv.getContext("2d",{willReadFrequently:true});g.drawImage(src,0,0,w,h);return g.getImageData(0,0,w,h)}
+function toGray(d){const n=d.width*d.height,o=new Float32Array(n),a=d.data;for(let i=0;i<n;i++)o[i]=.299*a[i*4]+.587*a[i*4+1]+.114*a[i*4+2];return o}
+function lapVar(g,w,h){let s=0,s2=0,n=0;for(let y=1;y<h-1;y++)for(let x=1;x<w-1;x++){const i=y*w+x,l=4*g[i]-g[i-1]-g[i+1]-g[i-w]-g[i+w];s+=l;s2+=l*l;n++}const m=s/n;return s2/n-m*m}
+function meanOf(g){let s=0;for(let i=0;i<g.length;i++)s+=g[i];return s/g.length}
+function hashOf(src){const g=toGray(imgData(src,9,8)),b=[];for(let y=0;y<8;y++)for(let x=0;x<8;x++)b.push(g[y*9+x]>g[y*9+x+1]?1:0);return b}
+function hamming(a,b){let n=0;for(let i=0;i<a.length;i++)if(a[i]!==b[i])n++;return n}
+function motionOf(a,b){let s=0,n=0;for(let i=0;i<a.length;i+=3){s+=Math.abs(a[i]-b[i]);n++}return s/n}
+async function analyseClip(c){
+ const r={flags:[],hash:null,sharp:0,lum:0,trim:null,remove:false};
+ if(c.type==="image"){const im=await loadImg(c.url);const w=160,h=Math.max(60,Math.round(160*im.naturalHeight/im.naturalWidth));
+  const g=toGray(imgData(im,w,h));r.sharp=lapVar(g,w,h);r.lum=meanOf(g);r.hash=hashOf(im);
+  if(r.sharp<30)r.flags.push("floue");if(r.lum<40)r.flags.push("trop sombre");if(r.lum>238)r.flags.push("trop claire")}
+ else if(c.type==="video"){
+  const v=await loadVideo(c.url);const n=8,len=(c.out-c.in)/1000,good=[];let nb=0;
+  for(let k=0;k<n;k++){const t=c.in/1000+len*(k+.5)/n;await seekVid(v,t);const g1=toGray(imgData(v,128,72));
+   if(k===4)r.hash=hashOf(v);
+   await seekVid(v,Math.min(t+.15,Math.max(0,v.duration-.05)));const g2=toGray(imgData(v,128,72));
+   const sh=lapVar(g1,128,72),lu=meanOf(g1),mo=motionOf(g1,g2);
+   const ok=lu>=40&&sh>=12&&mo<45;good.push(ok);if(!ok)nb++;r.sharp+=sh/n;r.lum+=lu/n}
+  if(nb>0){let best=0,bs=-1,cur=0,cs=0;for(let k=0;k<n;k++){if(good[k]){if(!cur)cs=k;cur++;if(cur>best){best=cur;bs=cs}}else cur=0}
+   if(best>=2){r.trim={in:Math.round(c.in+len*1000*bs/n),out:Math.round(c.in+len*1000*(bs+best)/n)};r.flags.push("passages flous, sombres ou très bougés coupés")}
+   else{r.flags.push("à retirer (flou, sombre ou très bougé)")}}}
+ return r}
+async function autoSelect(){
+ if(AUTO.busy)return;AUTO.busy=true;const res=[];
+ for(let i=0;i<S.clips.length;i++){setMsg("Analyse "+(i+1)+" / "+S.clips.length+"…");let r;
+  try{if(S.clips[i].type==="anim")r={flags:[],hash:null,remove:false};else r=await analyseClip(S.clips[i])}catch(e){r={flags:[],hash:null,remove:false}}res.push(r);await wait0()}
+ for(let i=0;i<res.length;i++)for(let j=i+1;j<res.length;j++){
+  if(res[i].hash&&res[j].hash&&S.clips[i].type===S.clips[j].type&&hamming(res[i].hash,res[j].hash)<=6){
+   if((res[j].sharp||0)>(res[i].sharp||0))res[i].flags.push("doublon : une copie plus nette existe ("+(j+1)+")");else res[j].flags.push("doublon de l'élément "+(i+1))}}
+ res.forEach(r=>{r.remove=r.flags.some(f=>/floue|sombre|claire|doublon|à retirer/.test(f))});
+ AUTO.res=res;AUTO.busy=false;const bad=res.filter(r=>r.flags.length).length;render();
+ setMsg(bad?bad+" élément(s) à examiner. Décoche ceux que tu veux garder, puis applique.":"Rien à reprocher : tout est net et bien exposé.")}
+function autoResults(){
+ const res=AUTO.res;if(!res||res.length!==S.clips.length)return "";
+ const rows=res.map((r,i)=>r.flags.length?`<div class="item"><input type="checkbox" ${r.remove?"checked":""} onchange="AUTO.res[${i}].remove=this.checked" style="width:24px;height:24px"><span>${i+1} · ${esc(r.flags.join(", "))}</span></div>`:"").join("");
+ if(!rows)return "";
+ return `${rows}<div class="hint">Coché = l'élément sera retiré (ou, pour les vidéos avec passages coupés, raccourci).</div><button class="btn r big" onclick="applyAuto()">✔ APPLIQUER</button>`}
+function applyAuto(){const res=AUTO.res;snap();
+ for(let i=res.length-1;i>=0;i--){const r=res[i];if(r.remove&&!r.trim){S.clips.splice(i,1)}
+  else if(r.trim&&!r.remove){S.clips[i].in=r.trim.in;S.clips[i].out=r.trim.out}}
+ AUTO.res=null;S.sel=Math.min(S.sel,S.clips.length-1);refresh();setMsg("Fait. Tu peux annuler dans l'onglet MONTAGE.")}
+
+/* ---------- EXIF : date, position, appareil ---------- */
+const CITIES=[["Pattaya",12.93,100.88],["Bangkok",13.75,100.50],["Chiang Mai",18.79,98.99],["Phuket",7.88,98.39],["Koh Samui",9.51,100.01],["Krabi",8.09,98.91],["Hua Hin",12.57,99.96],["Ayutthaya",14.35,100.57],["Kanchanaburi",14.02,99.53],["Chiang Rai",19.91,99.83],["Rayong",12.68,101.28],["Koh Chang",12.05,102.33],["Pai",19.36,98.44],["Udon Thani",17.41,102.79],["Khon Kaen",16.44,102.84],["Paris",48.86,2.35],["Lyon",45.76,4.84],["Marseille",43.30,5.37],["Nice",43.70,7.27],["Bordeaux",44.84,-0.58],["Toulouse",43.60,1.44],["Lille",50.63,3.06],["Strasbourg",48.57,7.75],["Nantes",47.22,-1.55],["Londres",51.51,-0.13],["Bruxelles",50.85,4.35],["Genève",46.20,6.14],["Rome",41.90,12.50],["Madrid",40.42,-3.70],["Barcelone",41.39,2.17],["Lisbonne",38.72,-9.14],["Berlin",52.52,13.40],["Amsterdam",52.37,4.90],["Vientiane",17.97,102.60],["Siem Reap",13.36,103.86],["Phnom Penh",11.56,104.92],["Hanoï",21.03,105.85],["Hô Chi Minh-Ville",10.82,106.63],["Singapour",1.35,103.82],["Kuala Lumpur",3.14,101.69],["Bali",-8.65,115.22],["Tokyo",35.68,139.69],["Kyoto",35.01,135.77],["Séoul",37.57,126.98],["Hong Kong",22.32,114.17],["Dubaï",25.20,55.27],["New York",40.71,-74.01],["Los Angeles",34.05,-118.24],["Montréal",45.50,-73.57],["Sydney",-33.87,151.21],["Le Caire",30.04,31.24],["Marrakech",31.63,-7.99],["Istanbul",41.01,28.98]];
+function distKm(a,b,c,d){const R=6371,r=Math.PI/180,dl=(c-a)*r,dn=(d-b)*r,x=Math.sin(dl/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x))}
+function placeOf(lat,lon){let best=null,bd=1e9;CITIES.forEach(c=>{const d=distKm(lat,lon,c[1],c[2]);if(d<bd){bd=d;best=c[0]}});return bd<70?best:null}
+function parseExif(dv){
+ if(dv.getUint16(0)!==0xFFD8)return null;let off=2;
+ while(off<dv.byteLength-4){const mk=dv.getUint16(off);off+=2;
+  if(mk===0xFFE1){const len=dv.getUint16(off);if(dv.getUint32(off+2)===0x45786966)return readTiff(dv,off+8);off+=len}
+  else if((mk&0xFF00)===0xFF00){off+=dv.getUint16(off)}else break}
+ return null}
+function readTiff(dv,t){
+ const le=dv.getUint16(t)===0x4949;const u16=o=>dv.getUint16(o,le),u32=o=>dv.getUint32(o,le);
+ function val(e,typ,cnt){const sz={1:1,2:1,3:2,4:4,5:8,7:1,9:4,10:8}[typ]||1;const p=sz*cnt>4?t+u32(e+8):e+8;
+  if(typ===2){let s="";for(let i=0;i<cnt-1;i++){const ch=dv.getUint8(p+i);if(!ch)break;s+=String.fromCharCode(ch)}return s.trim()}
+  if(typ===3){const a=[];for(let i=0;i<cnt;i++)a.push(u16(p+2*i));return cnt===1?a[0]:a}
+  if(typ===4){const a=[];for(let i=0;i<cnt;i++)a.push(u32(p+4*i));return cnt===1?a[0]:a}
+  if(typ===5||typ===10){const a=[];for(let i=0;i<Math.min(cnt,4);i++){const n=typ===5?u32(p+8*i):dv.getInt32(p+8*i,le),d=typ===5?u32(p+8*i+4):dv.getInt32(p+8*i+4,le);a.push(d?n/d:0)}return cnt===1?a[0]:a}
+  return null}
+ function ifd(o){const n=u16(o),m={};for(let k=0;k<n;k++){const e=o+2+k*12;try{m[u16(e)]=val(e,u16(e+2),u32(e+4))}catch(_){}}return m}
+ const i0=ifd(t+u32(t+4)),o={make:i0[0x10F],model:i0[0x110]};
+ if(i0[0x8769]){const ex=ifd(t+i0[0x8769]);o.f=ex[0x829D];o.exp=ex[0x829A];o.iso=Array.isArray(ex[0x8827])?ex[0x8827][0]:ex[0x8827];o.focal=ex[0xA405]||ex[0x920A];o.lens=ex[0xA434];
+  const d=ex[0x9003]||ex[0x9004];if(typeof d==="string"){const m=d.match(/(\d+):(\d+):(\d+) (\d+):(\d+):(\d+)/);if(m)o.date=new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+m[6])}}
+ if(i0[0x8825]){const gp=ifd(t+i0[0x8825]);const cv=a=>Array.isArray(a)?a[0]+a[1]/60+a[2]/3600:null;const la=cv(gp[2]),lo=cv(gp[4]);
+  if(la!=null&&lo!=null&&(la||lo)){o.lat=(gp[1]==="S"?-1:1)*la;o.lon=(gp[3]==="W"?-1:1)*lo;o.place=placeOf(o.lat,o.lon)}}
+ return o}
+async function readExif(c){
+ if(c.exif!==undefined)return c.exif;c.exif=null;if(c.type!=="image"||!c.uri)return null;
+ try{const r=await fetch(mu(c.uri),{headers:{Range:"bytes=0-262143"}});c.exif=parseExif(new DataView(await r.arrayBuffer()))}catch(_){c.exif=null}
+ return c.exif}
+const MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+function dateFr(d){return d.getDate()+" "+MOIS[d.getMonth()]+" "+d.getFullYear()}
+function dayKey(d){return d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate()}
+
+/* ---------- images fabriquées (carte, diapos, avant/après) ---------- */
+async function makeAnim(name,nFrames,frameMs,draw,auto){
+ if(!N||!N.saveImage)throw new Error("Disponible dans l'appli Android.");
+ const W=1280,H=720,cv=document.createElement("canvas");cv.width=W;cv.height=H;const g=cv.getContext("2d");const frames=[];let thumb="";const stamp=Date.now();
+ for(let k=0;k<nFrames;k++){draw(g,W,H,nFrames>1?k/(nFrames-1):0,k);
+  const b64=cv.toDataURL("image/jpeg",.88).split(",")[1];const u=N.saveImage(name+"_"+stamp+"_"+k,"jpg",b64);if(!u)throw new Error("Écriture impossible");frames.push(u);
+  if(k===Math.floor(nFrames/2)){const t=document.createElement("canvas");t.width=120;t.height=68;t.getContext("2d").drawImage(cv,0,0,120,68);thumb=t.toDataURL("image/jpeg",.7)}
+  if(k%4===0){setMsg(name.replace(/_/g," ")+" : image "+(k+1)+" / "+nFrames);await wait0()}}
+ return {id:Date.now()+Math.random(),type:"anim",auto,name,frames,frameMs,imgMs:nFrames*frameMs,uri:frames[0],url:mu(frames[0]),thumb,in:0,out:0,src:0,vol:100,speed:1,kb:false,bright:0,contrast:0,sat:0,rot:0,fade:true}}
+function drawMap(g,W,H,pts,p){
+ const gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,"#12395a");gr.addColorStop(1,"#0a1c2c");g.fillStyle=gr;g.fillRect(0,0,W,H);
+ const la=pts.map(q=>q.lat),lo=pts.map(q=>q.lon);const cLa=(Math.min(...la)+Math.max(...la))/2,cLo=(Math.min(...lo)+Math.max(...lo))/2;
+ const cs=Math.cos(cLa*Math.PI/180);const spanLa=Math.max(Math.max(...la)-Math.min(...la),.5),spanLo=Math.max(Math.max(...lo)-Math.min(...lo),.5);
+ const k=Math.max(spanLa*1.7/H,spanLo*cs*1.7/W);const X=l=>W/2+(l-cLo)*cs/k,Y=l=>H/2-(l-cLa)/k;
+ const steps=[.1,.25,.5,1,2,5,10,20],step=steps.find(s=>s*cs/k>W*.15)||20;
+ g.strokeStyle="rgba(255,255,255,.08)";g.lineWidth=1;g.fillStyle="rgba(255,255,255,.35)";g.font="16px sans-serif";
+ for(let x=Math.floor((cLo-W/2*k/cs)/step)*step;x<=cLo+W/2*k/cs+step;x+=step){const xx=X(x);g.beginPath();g.moveTo(xx,0);g.lineTo(xx,H);g.stroke();g.fillText(x.toFixed(step<1?2:0)+"°",xx+4,H-8)}
+ for(let y=Math.floor((cLa-H/2*k)/step)*step;y<=cLa+H/2*k+step;y+=step){const yy=Y(y);g.beginPath();g.moveTo(0,yy);g.lineTo(W,yy);g.stroke();g.fillText(y.toFixed(step<1?2:0)+"°",6,yy-4)}
+ g.fillStyle="#fff";g.font="bold 46px sans-serif";g.textAlign="center";g.fillText("Notre voyage",W/2,70);g.textAlign="left";
+ const xy=pts.map(q=>[X(q.lon),Y(q.lat)]);const seg=[];let L=0;for(let i=1;i<xy.length;i++){const d=Math.hypot(xy[i][0]-xy[i-1][0],xy[i][1]-xy[i-1][1]);seg.push(d);L+=d}
+ const reach=p*L;let acc=0,head=xy[0].slice();
+ g.lineWidth=5;g.strokeStyle="#ffb300";g.lineCap="round";g.setLineDash([14,10]);g.beginPath();g.moveTo(xy[0][0],xy[0][1]);
+ for(let i=1;i<xy.length;i++){const d=seg[i-1];if(reach>=acc+d){g.lineTo(xy[i][0],xy[i][1]);head=xy[i].slice()}
+  else{const f=Math.max(0,(reach-acc)/(d||1));head=[xy[i-1][0]+(xy[i][0]-xy[i-1][0])*f,xy[i-1][1]+(xy[i][1]-xy[i-1][1])*f];g.lineTo(head[0],head[1]);break}acc+=d}
+ g.stroke();g.setLineDash([]);
+ acc=0;pts.forEach((q,i)=>{if(i>0)acc+=seg[i-1];const on=p>=1||reach>=acc-1;if(!on)return;
+  g.fillStyle="#e53935";g.beginPath();g.arc(xy[i][0],xy[i][1],13,0,7);g.fill();g.strokeStyle="#fff";g.lineWidth=3;g.stroke();
+  g.fillStyle="#fff";g.font="bold 30px sans-serif";const tx=xy[i][0]>W*.7?xy[i][0]-24:xy[i][0]+24;g.textAlign=xy[i][0]>W*.7?"right":"left";g.fillText(q.label,tx,xy[i][1]-14);g.textAlign="left"});
+ if(p<1&&pts.length>1){g.fillStyle="#fff";g.beginPath();g.arc(head[0],head[1],10,0,7);g.fill()}}
+async function autoTitles(){
+ if(AUTO.busy||!S.clips.length)return;AUTO.busy=true;
+ try{setMsg("Lecture des dates et des positions…");for(const c of S.clips){await readExif(c)}
+  const dated=S.clips.filter(c=>c.exif&&c.exif.date).length,located=S.clips.filter(c=>c.exif&&c.exif.lat!=null).length;
+  if(!dated&&!located){AUTO.busy=false;setMsg("");toast("Aucune date ni position trouvée dans ces photos. (Les photos copiées ou envoyées par messagerie perdent souvent ces informations.)");return}
+  snap();
+  const withMap=$("xm")&&$("xm").checked;
+  const oldMap=S.clips.filter(c=>c.auto==="map");const oldDur=oldMap.reduce((a,c)=>a+c.imgMs,0);S.clips=S.clips.filter(c=>c.auto!=="map");
+  S.titles=S.titles.filter(t=>t.auto!=="day");
+  const groups=[];let curKey=null;
+  S.clips.forEach((c,i)=>{const e=c.exif;let key=curKey;if(e&&e.date)key=dayKey(e.date);if(key==null)key="?";
+   if(key!==curKey||!groups.length){groups.push({key,idx:[i],date:e&&e.date||null,pts:[]});curKey=key}else groups[groups.length-1].idx.push(i);
+   const g=groups[groups.length-1];if(e&&e.lat!=null)g.pts.push([e.lat,e.lon]);if(e&&e.date&&!g.date)g.date=e.date});
+  groups.forEach(g=>{if(g.pts.length){g.lat=g.pts.reduce((a,p)=>a+p[0],0)/g.pts.length;g.lon=g.pts.reduce((a,p)=>a+p[1],0)/g.pts.length;g.place=placeOf(g.lat,g.lon)}});
+  let newDur=0;
+  const route=groups.filter(g=>g.lat!=null).map(g=>({lat:g.lat,lon:g.lon,label:g.place||(g.lat.toFixed(2)+"°, "+g.lon.toFixed(2)+"°")}));
+  const uniq=[];route.forEach(r=>{const l=uniq[uniq.length-1];if(!l||l.label!==r.label)uniq.push(r)});
+  if(withMap&&uniq.length){const nF=Math.max(24,Math.min(60,uniq.length*14));
+   const mc=await makeAnim("carte_voyage",nF,125,(g,W,H,p)=>drawMap(g,W,H,uniq,Math.min(1,p*1.15)),"map");S.clips.unshift(mc);newDur=mc.imgMs}
+  const delta=newDur-oldDur;if(delta)S.titles.forEach(t=>{t.from+=delta;t.to+=delta});
+  const shiftIdx=newDur?1:0;const st=starts();let n=0;
+  groups.forEach(g=>{n++;const i0=g.idx[0]+shiftIdx,i1=g.idx[g.idx.length-1]+shiftIdx;
+   const parts=["Jour "+n];if(g.date)parts.push(dateFr(g.date));if(g.place)parts.push(g.place);
+   if(groups.length===1&&!g.date&&!g.place)return;
+   const a=st[i0]+300,b=Math.min(st[i0]+3500,st[i1]+dur(S.clips[i1]));
+   S.titles.push({text:parts.join(" · "),from:Math.round(a),to:Math.round(b),pos:0,size:.065,color:"#FFFFFF",auto:"day"})});
+  S.sel=-1;AUTO.busy=false;refresh();setMsg(groups.length+" jour(s) trouvé(s), "+uniq.length+" lieu(x). Les titres sont dans l'onglet TITRES"+(newDur?" et la carte est au début du montage.":"."))}
+ catch(e){AUTO.busy=false;setMsg("Impossible : "+e.message)}}
+function capText(e){const p=[];if(e.model)p.push((e.make&&!String(e.model).startsWith(e.make)?e.make+" ":"")+e.model);
+ const r=[];if(e.f)r.push("f/"+(Math.round(e.f*10)/10));if(e.exp)r.push(e.exp>=1?e.exp+" s":"1/"+Math.round(1/e.exp)+" s");if(e.iso)r.push("ISO "+e.iso);if(e.focal)r.push(Math.round(e.focal)+" mm");
+ if(r.length)p.push(r.join(" · "));if(e.place)p.push(e.place);return p.join(" · ")}
+async function autoCaptions(){
+ if(AUTO.busy||!S.clips.length)return;AUTO.busy=true;setMsg("Lecture des réglages des photos…");
+ for(const c of S.clips)await readExif(c);snap();S.titles=S.titles.filter(t=>t.auto!=="cap");const st=starts();let n=0;
+ S.clips.forEach((c,i)=>{if(c.type!=="image"||!c.exif)return;const tx=capText(c.exif);if(!tx)return;
+  S.titles.push({text:tx,from:Math.round(st[i]+250),to:Math.round(st[i]+dur(c)-250),pos:2,size:.04,color:"#FFFFFF",auto:"cap"});n++});
+ AUTO.busy=false;render();setMsg(n?n+" légende(s) de photographe ajoutée(s) (appareil, réglages, lieu).":"Ces photos ne contiennent pas de réglages d'appareil.")}
+
+/* ---------- silences ---------- */
+async function removeSilences(all){
+ if(AUTO.busy)return;const minS=+($("sm")?$("sm").value:800);
+ const idx=all?S.clips.map((c,i)=>c.type==="video"?i:-1).filter(i=>i>=0):(curC()&&curC().type==="video"?[S.sel]:[]);
+ if(!idx.length){toast(all?"Il n'y a pas de vidéo dans le montage.":"Sélectionne d'abord une vidéo (onglet MONTAGE).");return}
+ AUTO.busy=true;snap();let cuts=0,fail=0;
+ for(let q=idx.length-1;q>=0;q--){const i=idx[q],c=S.clips[i];setMsg("Écoute de la vidéo "+(i+1)+"…");
+  try{const ab=await decodeUrl(c.url,120),ch=ab.getChannelData(0),sr=ab.sampleRate,win=Math.round(sr*.05);
+   const a=Math.floor(c.in/1000*sr/win),b=Math.min(Math.floor(c.out/1000*sr/win),Math.floor(ch.length/win));
+   const rms=[];for(let k=a;k<b;k++){let e=0;const o=k*win;for(let j=0;j<win;j+=2){const v=ch[o+j];e+=v*v}rms.push(Math.sqrt(e/(win/2)))}
+   if(rms.length<10)continue;
+   const sorted=[...rms].sort((x,y)=>x-y);const p90=sorted[Math.floor(sorted.length*.9)]||0;const thr=Math.max(.006,p90*.12);
+   const need=Math.max(2,Math.round(minS/50));const segs=[];let start=-1,quiet=0;
+   for(let k=0;k<rms.length;k++){if(rms[k]>=thr){if(start<0)start=k;quiet=0}else if(start>=0){quiet++;if(quiet>=need){segs.push([start,k-quiet]);start=-1;quiet=0}}}
+   if(start>=0)segs.push([start,rms.length-1]);
+   const pad=3,base=a*50,out=[];
+   segs.forEach(s=>{const ns=Math.max(c.in,base+(s[0]-pad)*50),ne=Math.min(c.out,base+(s[1]+pad+1)*50);
+    if(out.length&&ns<=out[out.length-1][1]+50)out[out.length-1][1]=Math.max(out[out.length-1][1],ne);else if(ne-ns>=400)out.push([ns,ne])});
+   if(out.length<1||(out.length===1&&out[0][0]<=c.in+200&&out[0][1]>=c.out-200))continue;
+   const news=out.map(o=>{const d=JSON.parse(JSON.stringify(c));d.id=Date.now()+Math.random();d.in=Math.round(o[0]);d.out=Math.round(o[1]);return d});
+   S.clips.splice(i,1,...news);cuts+=out.length-1+(out[0][0]>c.in+200?1:0)}
+  catch(e){fail++}}
+ AUTO.busy=false;S.sel=Math.min(S.sel,S.clips.length-1);refresh();
+ setMsg((cuts?"Silences supprimés : "+cuts+" coupure(s). ":"Aucun silence assez long trouvé. ")+(fail?fail+" vidéo(s) n'ont pas pu être analysées (trop longues ou format non lu).":""))}
+
+/* ---------- avant / après ---------- */
+async function makeBA(){
+ const c=curC();if(!c||c.type!=="image"){toast("Sélectionne d'abord une photo (onglet MONTAGE).");return}
+ if(!c.bright&&!c.contrast&&!c.sat&&!c.filter){toast("Règle d'abord la luminosité, le contraste, la saturation ou un filtre sur cette photo : ce sera le « après ».");return}
+ if(AUTO.busy)return;AUTO.busy=true;
+ try{const im=await loadImg(c.url);const after=cssFilter(c);const ar=im.naturalWidth/im.naturalHeight;
+  const clip=await makeAnim("avant_apres",50,60,(g,W,H,p)=>{
+   let dw=W,dh=W/ar;if(dh<H){dh=H;dw=H*ar}const dx=(W-dw)/2,dy=(H-dh)/2;
+   g.fillStyle="#000";g.fillRect(0,0,W,H);const e=p<.12?0:(p>.88?1:(p-.12)/.76);const s=e*e*(3-2*e);const x=Math.round(W*s);
+   g.filter=after;g.drawImage(im,dx,dy,dw,dh);
+   g.save();g.beginPath();g.rect(0,0,x,H);g.clip();g.filter="none";g.drawImage(im,dx,dy,dw,dh);g.restore();
+   g.filter="none";g.fillStyle="#fff";g.fillRect(x-2,0,4,H);g.beginPath();g.arc(x,H/2,26,0,7);g.fill();g.fillStyle="#222";g.font="bold 30px sans-serif";g.textAlign="center";g.fillText("↔",x,H/2+10);
+   g.font="bold 36px sans-serif";g.fillStyle="rgba(0,0,0,.55)";g.fillRect(20,H-74,170,54);g.fillRect(W-190,H-74,170,54);g.fillStyle="#fff";g.fillText("AVANT",105,H-35);g.fillText("APRÈS",W-105,H-35);g.textAlign="left"},"ba");
+  snap();S.clips.splice(S.sel+1,0,clip);S.sel=S.sel+1;AUTO.busy=false;refresh();setMsg("Animation avant / après ajoutée après la photo.")}
+ catch(e){AUTO.busy=false;setMsg("Impossible : "+e.message)}}
+
+/* ---------- mode exposition ---------- */
+function slideDraw(g,W,H,lines,qrText){
+ g.fillStyle="#101820";g.fillRect(0,0,W,H);g.fillStyle="#ffb300";g.fillRect(0,0,W,10);g.fillRect(0,H-10,W,10);
+ const hasQr=!!qrText;g.textAlign=hasQr?"left":"center";const tx=hasQr?70:W/2;
+ g.fillStyle="#fff";lines.filter(Boolean).forEach((l,i)=>{g.font=(i===0?"bold 66px":"38px")+" sans-serif";g.fillStyle=i===0?"#fff":"#cfd8dc";
+  const words=String(l).split(" ");let line="",y=(hasQr?190:H/2-40)+i*(i===0?0:62)+(i>0?40:0);const maxW=hasQr?W*.5:W*.8;
+  words.forEach(w=>{const t=line?line+" "+w:w;if(g.measureText(t).width>maxW&&line){g.fillText(line,tx,y);y+=i===0?76:48;line=w}else line=t});g.fillText(line,tx,y)});
+ if(hasQr){const rows=(N.qr(qrText)||"").trim().split("\n");const n=rows.length||1,cell=Math.floor(H*.56/n),sz=cell*n,pad=24,x0=W-sz-110,y0=(H-sz)/2;
+  g.fillStyle="#fff";g.fillRect(x0-pad,y0-pad,sz+2*pad,sz+2*pad);g.fillStyle="#000";
+  rows.forEach((r,y)=>{for(let x=0;x<r.length;x++)if(r[x]==="1")g.fillRect(x0+x*cell,y0+y*cell,cell,cell)})}
+ g.textAlign="left"}
+async function makeExpo(){
+ if(AUTO.busy)return;if(!S.clips.some(c=>c.type==="image")){toast("Ajoute d'abord des photos.");return}
+ const nm=($("xn").value||"").trim()||"Exposition",sg=($("xs").value||"").trim(),url=($("xu").value||"").trim(),sale=$("xv").checked,capT=$("xc").checked;
+ AUTO.busy=true;
+ try{snap();const oldIntro=S.clips.filter(c=>c.auto==="expo"&&c.name==="expo_intro").reduce((a,c)=>a+c.imgMs,0);
+  S.clips=S.clips.filter(c=>c.auto!=="expo");S.titles=S.titles.filter(t=>t.auto!=="expo");
+  S.trans="cross";S.fadeMs=900;S.clips.forEach(c=>{if(c.type==="image"){c.imgMs=6000;c.kb=false}});
+  const intro=await makeAnim("expo_intro",1,5000,(g,W,H)=>slideDraw(g,W,H,[nm,sg],null),"expo");
+  S.clips.unshift(intro);const dl=intro.imgMs-oldIntro;S.titles.forEach(t=>{t.from+=dl;t.to+=dl});
+  if(url){const q=await makeAnim("expo_qr",1,8000,(g,W,H)=>slideDraw(g,W,H,["Une photo vous plaît ?","Scannez pour me contacter",sg],url),"expo");S.clips.push(q)}
+  const st=starts();
+  S.clips.forEach((c,i)=>{if(c.type!=="image")return;const cap=(c.cap||c.name||"").replace(/\.[^.]+$/,"");const a=Math.round(st[i]+500),b=Math.round(st[i]+dur(c)-500);
+   if(capT&&cap)S.titles.push({text:cap,from:a,to:b,pos:2,size:.06,color:"#FFFFFF",auto:"expo"});
+   if(sale)S.titles.push({text:"PHOTO À VENDRE",from:a,to:b,pos:0,size:.05,color:"#FFD600",auto:"expo"})});
+  S.sel=-1;AUTO.busy=false;refresh();setMsg("Mode exposition prêt : "+fmt(total())+". Exporte la vidéo et passe-la en boucle sur ton écran.")}
+ catch(e){AUTO.busy=false;setMsg("Impossible : "+e.message)}}
+
+/* ---------- modèles ---------- */
+const MODELS=[["✈️ Souvenirs de voyage","cross",800,4000,{}],["⚡ Dynamique","slide",400,2500,{bright:5,contrast:10,sat:15}],["🎬 Cinéma","dip",900,5000,{filter:"cool",vig:true}],["📼 Vintage","cross",800,4500,{filter:"vintage"}],["◼️ Noir et blanc","cross",800,4500,{filter:"bw",vig:true}]];
+function applyModel(i){const m=MODELS[i];snap();S.trans=m[1];S.fadeMs=m[2];
+ S.clips.forEach(c=>{if(c.type==="image"){c.imgMs=m[3];c.kb=true}if(c.type==="anim")return;c.filter=m[4].filter||"";c.vig=!!m[4].vig;c.bright=m[4].bright||0;c.contrast=m[4].contrast||0;c.sat=m[4].sat||0});
+ refresh();setMsg("Modèle « "+m[0]+" » appliqué. Tu peux tout modifier ensuite.")}
+
+/* ---------- onglet AUTO ---------- */
+function tabAuto(){
+ const n=S.clips.length;
+ return `<div class="card"><div class="msg" id="automsg" style="color:#fff;min-height:22px;font-size:14px">${AUTO.busy?"Travail en cours…":"Choisis un outil ci-dessous."}</div></div>
+ <div class="card"><h3>🧹 Garder le meilleur</h3><div class="hint">Repère les doublons, les photos floues ou trop sombres et les passages de vidéo flous, sombres ou très bougés. (Les yeux fermés ne sont pas détectés.)</div>
+ <button class="btn t big" onclick="autoSelect()" ${n?"":"disabled"}>🔍 ANALYSER MES ÉLÉMENTS</button>${autoResults()}</div>
+ <div class="card"><h3>🗺 Titres et carte du voyage</h3><div class="hint">Lit la date et la position GPS des photos : un titre par jour (« Jour 2 · 14 novembre 2026 · Pattaya ») et une carte animée du trajet.</div>
+ <label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="xm" checked style="width:26px;height:26px"> Ajouter la carte animée au début</label>
+ <button class="btn t big" onclick="autoTitles()" ${n?"":"disabled"}>🗺 CRÉER LES TITRES ET LA CARTE</button>
+ <button class="btn t big" style="margin-top:8px" onclick="autoCaptions()" ${n?"":"disabled"}>📷 LÉGENDES DE PHOTOGRAPHE (appareil, réglages, lieu)</button></div>
+ <div class="card"><h3>🔇 Supprimer les silences</h3><div class="hint">Coupe automatiquement les moments sans parole ni bruit dans les vidéos.</div>
+ <label class="f">Silence à couper à partir de</label><select id="sm"><option value="500">0,5 seconde</option><option value="800" selected>0,8 seconde</option><option value="1200">1,2 seconde</option><option value="2000">2 secondes</option></select>
+ <div class="row"><button class="btn t" onclick="removeSilences(false)">LA VIDÉO CHOISIE</button><button class="btn t" onclick="removeSilences(true)">TOUTES LES VIDÉOS</button></div></div>
+ <div class="card"><h3>↔ Avant / après</h3><div class="hint">Règle d'abord la photo (luminosité, contraste, filtre) dans MONTAGE, garde-la sélectionnée, puis crée l'animation : un curseur balaie l'image de l'original vers la version retouchée.</div>
+ <button class="btn t big" onclick="makeBA()" ${n?"":"disabled"}>↔ CRÉER L'AVANT / APRÈS</button></div>
+ <div class="card"><h3>🖼 Mode exposition</h3><div class="hint">Diaporama pour un écran de galerie : titre de l'exposition, légende de chaque photo (réglable dans MONTAGE), « photo à vendre » et un QR code à la fin.</div>
+ <label class="f">Nom de l'exposition</label><input type="text" id="xn" placeholder="Ex. Lumières de Thaïlande">
+ <label class="f">Signature</label><input type="text" id="xs" placeholder="© JM Dargère">
+ <label class="f">Site ou contact (pour le QR code)</label><input type="text" id="xu" placeholder="https://… ou adresse e-mail">
+ <label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="xc" checked style="width:26px;height:26px"> Afficher la légende de chaque photo</label>
+ <label class="f" style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="xv" style="width:26px;height:26px"> Afficher « PHOTO À VENDRE »</label>
+ <button class="btn t big" onclick="makeExpo()" ${n?"":"disabled"}>🖼 PRÉPARER L'EXPOSITION</button></div>
+ <div class="card"><h3>🎨 Modèles de style</h3><div class="hint">Un seul bouton règle la transition, la durée des photos et les couleurs de tous les éléments.</div>
+ ${MODELS.map((m,i)=>`<button class="btn big" style="margin:4px 0" onclick="applyModel(${i})" ${n?"":"disabled"}>${m[0]}</button>`).join("")}</div>`}
 
 setRatio();refresh();
 </script></body></html>

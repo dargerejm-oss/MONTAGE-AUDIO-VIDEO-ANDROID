@@ -135,10 +135,28 @@ public class MainActivity extends Activity {
                 return null;
             }
         });
-        if (Build.VERSION.SDK_INT >= 33
-                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 13);
+        if (Build.VERSION.SDK_INT >= 23) {
+            // notifications, lecture des photos/videos et de leur position GPS (titres et carte automatiques)
+            java.util.ArrayList<String> want = new java.util.ArrayList<>();
+            if (Build.VERSION.SDK_INT >= 33) {
+                want.add(Manifest.permission.POST_NOTIFICATIONS);
+                want.add(Manifest.permission.READ_MEDIA_IMAGES);
+                want.add(Manifest.permission.READ_MEDIA_VIDEO);
+            } else {
+                want.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+            }
+            if (Build.VERSION.SDK_INT >= 29) {
+                want.add(Manifest.permission.ACCESS_MEDIA_LOCATION);
+            }
+            java.util.ArrayList<String> need = new java.util.ArrayList<>();
+            for (String pm : want) {
+                if (checkSelfPermission(pm) != PackageManager.PERMISSION_GRANTED) {
+                    need.add(pm);
+                }
+            }
+            if (!need.isEmpty()) {
+                requestPermissions(need.toArray(new String[0]), 13);
+            }
         }
         web.loadUrl("https://app.local/index.html");
     }
@@ -192,7 +210,9 @@ public class MainActivity extends Activity {
         android.content.ContentResolver cr = getContentResolver();
         String type = cr.getType(uri);
         if (type == null) {
-            type = "application/octet-stream";
+            String ps = String.valueOf(uri.getPath()).toLowerCase();
+            type = ps.endsWith(".png") ? "image/png" : ps.endsWith(".jpg") ? "image/jpeg"
+                    : "application/octet-stream";
         }
         final AssetFileDescriptor afd = cr.openAssetFileDescriptor(uri, "r");
         if (afd == null) {
@@ -517,6 +537,60 @@ public class MainActivity extends Activity {
                 } catch (Exception ignored) {
                 }
             });
+        }
+
+        /** Enregistre une image fabriquee par la page (carte, diapo, image avant/apres). Retourne son adresse. */
+        @JavascriptInterface
+        public String saveImage(String name, String ext, String base64) {
+            try {
+                File d = new File(getFilesDir(), "gen");
+                d.mkdirs();
+                String safe = name.replaceAll("[^A-Za-z0-9_-]", "_");
+                File f = new File(d, safe + ("png".equals(ext) ? ".png" : ".jpg"));
+                byte[] data = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+                java.io.FileOutputStream o = new java.io.FileOutputStream(f);
+                o.write(data);
+                o.close();
+                return Uri.fromFile(f).toString();
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
+        /** QR code : retourne les lignes de la grille (1 = noir) separees par des retours a la ligne. */
+        @JavascriptInterface
+        public String qr(String text) {
+            try {
+                com.google.zxing.qrcode.QRCodeWriter w = new com.google.zxing.qrcode.QRCodeWriter();
+                java.util.Map<com.google.zxing.EncodeHintType, Object> hints = new HashMap<>();
+                hints.put(com.google.zxing.EncodeHintType.MARGIN, 0);
+                com.google.zxing.common.BitMatrix m = w.encode(text,
+                        com.google.zxing.BarcodeFormat.QR_CODE, 0, 0, hints);
+                StringBuilder sb = new StringBuilder();
+                for (int y = 0; y < m.getHeight(); y++) {
+                    for (int x = 0; x < m.getWidth(); x++) {
+                        sb.append(m.get(x, y) ? '1' : '0');
+                    }
+                    sb.append('\n');
+                }
+                return sb.toString();
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
+        @JavascriptInterface
+        public void shareVideo(String uri) {
+            try {
+                Intent i = new Intent(Intent.ACTION_SEND);
+                i.setType("video/mp4");
+                i.putExtra(Intent.EXTRA_STREAM, Uri.parse(uri));
+                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                Intent c = Intent.createChooser(i, "Envoyer la vidéo");
+                c.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(c);
+            } catch (Exception ignored) {
+            }
         }
 
         @JavascriptInterface
