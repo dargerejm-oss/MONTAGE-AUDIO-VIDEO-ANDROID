@@ -579,6 +579,50 @@ public class MainActivity extends Activity {
             }
         }
 
+        /** Ecrit le projet (JSON) dans Telechargements/MONTAGE et ouvre le partage, pour le reprendre sur le PC. */
+        @JavascriptInterface
+        public String exportProject(String name, String json) {
+            try {
+                String safe = name.replaceAll("[^A-Za-z0-9_-]", "_");
+                if (safe.isEmpty()) {
+                    safe = "montage";
+                }
+                String fn = safe + ".json";
+                byte[] data = json.getBytes("UTF-8");
+                Uri out;
+                if (Build.VERSION.SDK_INT >= 29) {
+                    android.content.ContentValues cv = new android.content.ContentValues();
+                    cv.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fn);
+                    cv.put(android.provider.MediaStore.Downloads.MIME_TYPE, "application/json");
+                    cv.put(android.provider.MediaStore.Downloads.RELATIVE_PATH, "Download/MONTAGE");
+                    out = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                    if (out == null) {
+                        return "";
+                    }
+                    java.io.OutputStream o = getContentResolver().openOutputStream(out);
+                    o.write(data);
+                    o.close();
+                    Intent i = new Intent(Intent.ACTION_SEND);
+                    i.setType("application/json");
+                    i.putExtra(Intent.EXTRA_STREAM, out);
+                    i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                    Intent c = Intent.createChooser(i, "Envoyer le projet au PC");
+                    c.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(c);
+                    return "Download/MONTAGE/" + fn;
+                }
+                File d = new File(android.os.Environment.getExternalStoragePublicDirectory(
+                        android.os.Environment.DIRECTORY_DOWNLOADS), "MONTAGE");
+                d.mkdirs();
+                java.io.FileOutputStream o = new java.io.FileOutputStream(new File(d, fn));
+                o.write(data);
+                o.close();
+                return "Download/MONTAGE/" + fn;
+            } catch (Exception e) {
+                return "";
+            }
+        }
+
         @JavascriptInterface
         public void shareVideo(String uri) {
             try {

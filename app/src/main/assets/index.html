@@ -88,6 +88,8 @@ select,input[type=text]{width:100%;height:46px;border-radius:10px;border:0;backg
 </div>
 <div id="modal"><div class="box"><h2 id="mt"></h2><div id="mb"></div><div class="row" id="mbt"></div></div></div>
 <input id="fv" type="file" accept="video/*,image/*" multiple hidden>
+<input id="fpj" type="file" hidden>
+<input id="fpm" type="file" accept="video/*,image/*,audio/*" multiple hidden>
 <input id="fm" type="file" accept="audio/*" hidden>
 <input id="fpip" type="file" accept="video/*,image/*" hidden>
 <div id="tp"><div id="tpt"></div><button class="btn r big" id="tpb" onclick="stopRecord()">⏹ TERMINER L'ENREGISTREMENT</button></div>
@@ -139,11 +141,40 @@ function tabProjets(){
  <div class="row"><button class="btn b" onclick="saveProject()">💾 SAUVEGARDER</button></div>
  ${others.map(x=>`<div class="item"><span>${esc(x.name)} · ${d(x.ts)}</span><button style="background:#43a047" onclick="loadProject('${x.name.replace(/'/g,"\\'")}')">↩</button><button onclick="delProject('${x.name.replace(/'/g,"\\'")}')">🗑</button></div>`).join("")}
  <div class="hint">Le montage est aussi sauvegardé tout seul toutes les quelques secondes.</div></div>`}
+
+/* ---------- échange avec le PC ---------- */
+$("fpj").onchange=e=>{const f=e.target.files[0];e.target.value="";if(!f)return;
+ const r=new FileReader();r.onload=()=>{try{const o=JSON.parse(r.result);if(!o||!Array.isArray(o.clips))throw 0;S.pcImport={o,name:f.name};render()}catch(_){toast("Ce fichier n'est pas un projet MONTAGE.")}};r.readAsText(f)};
+$("fpm").onchange=e=>{let p=[];try{p=JSON.parse(N.lastPicked())}catch(_){}e.target.value="";
+ const P=S.pcImport;if(!P)return;const idx={};p.forEach(x=>{idx[(x.name||"").toLowerCase()]=x});
+ const o=P.o;let miss=[];
+ o.clips=o.clips.filter(c=>{const x=idx[(c.name||"").toLowerCase()];if(!x){miss.push(c.name);return false}c.uri=x.uri;if(c.type==="video"){c.src=0;c.out=c.out||0}else c.thumb="";return true});
+ if(o.music&&o.music.name){const x=idx[o.music.name.toLowerCase()];if(x)o.music.uri=x.uri}
+ S.pcImport=null;
+ if(!o.clips.length){toast("Aucun des fichiers choisis ne porte le nom attendu.");render();return}
+ projApply(JSON.stringify(o));
+ S.clips.forEach(c=>{c.id=Date.now()+Math.random();if(c.type==="image"){c.thumb=c.url;return}
+  const v=document.createElement("video");v.preload="metadata";v.muted=true;v.src=c.url;
+  v.onloadedmetadata=()=>{c.src=Math.round(v.duration*1000)||1000;if(!c.out||c.out>c.src)c.out=c.src;try{v.currentTime=Math.min(0.5,v.duration/2)}catch(_){}refresh()};
+  v.onseeked=()=>{try{const cv=document.createElement("canvas");cv.width=120;cv.height=68;cv.getContext("2d").drawImage(v,0,0,120,68);c.thumb=cv.toDataURL("image/jpeg",.7)}catch(_){}refresh();v.onseeked=null};
+  v.onerror=()=>{c.src=c.out=c.out||3000;refresh()}});
+ refresh();
+ if(miss.length)toast("Projet ouvert. Fichiers non trouvés : "+miss.slice(0,6).map(esc).join(", ")+(miss.length>6?"…":"")+".");else toast("Projet du PC ouvert : "+S.clips.length+" élément(s).")};
+function sendToPC(){if(!N||!N.exportProject){toast("Disponible dans l'appli.");return}
+ const r=N.exportProject("montage_"+new Date().toISOString().slice(0,16).replace(/[-:T]/g,""),projData());
+ if(!r)toast("L'envoi a échoué.")}
 /* ---------- onglet MÉDIAS ---------- */
 function tabMedias(){
  return `<div class="credit">${esc(AUT.name)} · ${esc(AUT.insta)}</div><div class="card"><h3>Ajouter</h3><div class="row"><button class="btn o big" onclick="$('fv').click()">➕ PHOTOS ET VIDÉOS</button></div>
  <div class="hint">Tu peux en choisir plusieurs d'un coup. Ils s'ajoutent à la fin du montage.</div></div>
  ${N&&N.projList?tabProjets():""}
+ <div class="card"><h3>🖥️ Échange avec le PC</h3>
+ ${S.pcImport?`<div class="hint"><b>Projet du PC chargé</b> : ${S.pcImport.o.clips.length} élément(s).<br>Choisis maintenant les photos et vidéos correspondantes (mêmes noms de fichiers que sur le PC).</div>
+ <div class="row"><button class="btn g big" onclick="$('fpm').click()">📂 CHOISIR LES PHOTOS ET VIDÉOS</button></div>
+ <div class="row"><button class="btn" onclick="S.pcImport=null;render()">ANNULER</button></div>`:`
+ <div class="row"><button class="btn o big" onclick="$('fpj').click()">📥 OUVRIR UN PROJET DU PC</button></div>`}
+ ${S.clips.length?`<div class="row"><button class="btn b big" onclick="sendToPC()">📤 ENVOYER CE MONTAGE AU PC</button></div>`:""}
+ <div class="hint">Sur le PC : « Pour le téléphone » crée le fichier à ouvrir ici. Ici, « Envoyer au PC » crée un fichier à ouvrir dans l'outil PC (bouton Ouvrir un projet).</div></div>
  <div class="card"><h3>Montage (${S.clips.length} éléments, ${fmt(total())})</h3>${strip()}
  ${S.clips.length?`<div class="hint">Touche un élément puis va dans MONTAGE pour le régler.</div>`:`<div class="hint">Rien pour l'instant.</div>`}</div>
  <div class="card"><h3>✏️ Auteur</h3><div class="hint">Ton nom et ton Instagram, affichés en petit en haut de cet onglet et proposés comme signature du mode exposition.</div>
