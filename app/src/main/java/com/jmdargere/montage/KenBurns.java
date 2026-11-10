@@ -9,12 +9,14 @@ import androidx.media3.effect.MatrixTransformation;
 @UnstableApi
 final class KenBurns implements MatrixTransformation {
     private final long durUs;
+    private final long offUs;
     private final boolean zoomIn;
     private final float dirX;
     private final float dirY;
 
-    KenBurns(long durUs, int index) {
+    KenBurns(long durUs, int index, long offUs) {
         this.durUs = Math.max(1, durUs);
+        this.offUs = offUs;
         this.zoomIn = index % 2 == 0;
         int k = index % 4;
         this.dirX = (k == 0 || k == 3) ? 1f : -1f;
@@ -23,7 +25,7 @@ final class KenBurns implements MatrixTransformation {
 
     @Override
     public Matrix getMatrix(long presentationTimeUs) {
-        float p = Math.max(0f, Math.min(1f, (float) presentationTimeUs / (float) durUs));
+        float p = Math.max(0f, Math.min(1f, (float) (presentationTimeUs + offUs) / (float) durUs));
         if (!zoomIn) {
             p = 1f - p;
         }

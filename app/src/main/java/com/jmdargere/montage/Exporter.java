@@ -112,62 +112,145 @@ public final class Exporter {
         return ImmutableList.<AudioProcessor>of(p);
     }
 
+    private static final class Speed implements androidx.media3.common.audio.SpeedProvider {
+        private final float s;
+
+        Speed(float s) {
+            this.s = s;
+        }
+
+        @Override
+        public float getSpeed(long timeUs) {
+            return s;
+        }
+
+        @Override
+        public long getNextSpeedChangeTimeUs(long timeUs) {
+            return androidx.media3.common.C.TIME_UNSET;
+        }
+    }
+
+    /** Construit un element (video ou photo) avec ses reglages et effets. */
+    private static EditedMediaItem makeItem(JSONObject c, int idx, int w, int h,
+                                            long srcInMs, long srcMs, long effUs,
+                                            boolean overlay, long kbOffsetUs, long kbTotalUs,
+                                            String trans, long fadeUs) throws Exception {
+        Uri u = Uri.parse(c.getString("uri"));
+        boolean image = "image".equals(c.getString("type"));
+        EditedMediaItem.Builder eb;
+        if (image) {
+            long ms = effUs / 1000L;
+            MediaItem mi = new MediaItem.Builder().setUri(u).setImageDurationMs(ms).build();
+            eb = new EditedMediaItem.Builder(mi).setDurationUs(effUs).setFrameRate(30);
+        } else {
+            MediaItem.ClippingConfiguration cc = new MediaItem.ClippingConfiguration.Builder()
+                    .setStartPositionMs(srcInMs).setEndPositionMs(srcInMs + srcMs).build();
+            MediaItem mi = new MediaItem.Builder().setUri(u).setClippingConfiguration(cc).build();
+            eb = new EditedMediaItem.Builder(mi);
+            float sp = (float) c.optDouble("speed", 1.0);
+            if (Math.abs(sp - 1f) > 0.01f) {
+                eb.setSpeed(new Speed(sp));
+            }
+        }
+        List<Effect> vfx = new ArrayList<>();
+        int rot = ((c.optInt("rot", 0) % 360) + 360) % 360;
+        if (rot != 0) {
+            vfx.add(new ScaleAndRotateTransformation.Builder().setRotationDegrees(-rot).build());
+        }
+        vfx.add(Presentation.createForWidthAndHeight(w, h, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP));
+        if (c.optBoolean("kb", false)) {
+            vfx.add(new KenBurns(kbTotalUs, idx, kbOffsetUs));
+        }
+        double bright = c.optDouble("bright", 0) / 100.0;
+        double contrast = c.optDouble("contrast", 0) / 100.0;
+        double sat = c.optDouble("sat", 0);
+        if (Math.abs(bright) > 0.001) {
+            vfx.add(new Brightness((float) bright));
+        }
+        if (Math.abs(contrast) > 0.001) {
+            vfx.add(new Contrast((float) contrast));
+        }
+        if (Math.abs(sat) > 0.5) {
+            vfx.add(new HslAdjustment.Builder().adjustSaturation((float) sat).build());
+        }
+        if ("dip".equals(trans) && fadeUs > 0 && c.optBoolean("fade", true)) {
+            long f = Math.min(fadeUs, effUs / 2);
+            vfx.add(new OverlayEffect(ImmutableList.of(new FadeOverlay(w, h, f, f, effUs))));
+        }
+        if (overlay) {
+            vfx.add(new AlphaRamp(effUs));
+        }
+        float vol = (float) (c.optDouble("vol", 100) / 100.0);
+        eb.setEffects(new Effects(volume(vol), ImmutableList.copyOf(vfx)));
+        return eb.build();
+    }
+
     private static void run(final Context ctx, JSONObject spec) throws Exception {
         final int w = spec.getInt("w");
         final int h = spec.getInt("h");
         final long fadeUs = spec.optLong("fadeMs", 0) * 1000L;
+        final String trans = spec.optString("trans", "cross");
         JSONArray clips = spec.getJSONArray("clips");
-
-        // ---------- pistes video / photos
-        EditedMediaItemSequence.Builder vseq = new EditedMediaItemSequence.Builder();
-        long totalUs = 0;
-        for (int i = 0; i < clips.length(); i++) {
-            JSONObject c = clips.getJSONObject(i);
-            Uri u = Uri.parse(c.getString("uri"));
-            boolean image = "image".equals(c.getString("type"));
-            long durUs;
-            EditedMediaItem.Builder eb;
-            if (image) {
-                long ms = c.getLong("imgMs");
-                durUs = ms * 1000L;
-                MediaItem mi = new MediaItem.Builder().setUri(u).setImageDurationMs(ms).build();
-                eb = new EditedMediaItem.Builder(mi).setDurationUs(durUs).setFrameRate(30);
-            } else {
-                long in = c.getLong("in");
-                long out = c.getLong("out");
-                durUs = (out - in) * 1000L;
-                MediaItem.ClippingConfiguration cc = new MediaItem.ClippingConfiguration.Builder()
-                        .setStartPositionMs(in).setEndPositionMs(out).build();
-                MediaItem mi = new MediaItem.Builder().setUri(u).setClippingConfiguration(cc).build();
-                eb = new EditedMediaItem.Builder(mi);
-            }
-            List<Effect> vfx = new ArrayList<>();
-            int rot = ((c.optInt("rot", 0) % 360) + 360) % 360;
-            if (rot != 0) {
-                vfx.add(new ScaleAndRotateTransformation.Builder().setRotationDegrees(-rot).build());
-            }
-            vfx.add(Presentation.createForWidthAndHeight(w, h, Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP));
-            double bright = c.optDouble("bright", 0) / 100.0;
-            double contrast = c.optDouble("contrast", 0) / 100.0;
-            double sat = c.optDouble("sat", 0);
-            if (Math.abs(bright) > 0.001) {
-                vfx.add(new Brightness((float) bright));
-            }
-            if (Math.abs(contrast) > 0.001) {
-                vfx.add(new Contrast((float) contrast));
-            }
-            if (Math.abs(sat) > 0.5) {
-                vfx.add(new HslAdjustment.Builder().adjustSaturation((float) sat).build());
-            }
-            if (fadeUs > 0 && c.optBoolean("fade", true)) {
-                long f = Math.min(fadeUs, durUs / 2);
-                vfx.add(new OverlayEffect(ImmutableList.of(new FadeOverlay(w, h, f, f, durUs))));
-            }
-            float vol = (float) (c.optDouble("vol", 100) / 100.0);
-            eb.setEffects(new Effects(volume(vol), ImmutableList.copyOf(vfx)));
-            vseq.addItem(eb.build());
-            totalUs += durUs;
+        int n = clips.length();
+        if (n == 0) {
+            throw new IllegalStateException("Montage vide");
         }
+
+        // ---------- durees : eff = duree dans le montage (apres vitesse)
+        long[] srcMs = new long[n];
+        long[] effMs = new long[n];
+        for (int i = 0; i < n; i++) {
+            JSONObject c = clips.getJSONObject(i);
+            boolean image = "image".equals(c.getString("type"));
+            if (image) {
+                srcMs[i] = c.getLong("imgMs");
+                effMs[i] = srcMs[i];
+            } else {
+                srcMs[i] = c.getLong("out") - c.getLong("in");
+                double sp = Math.max(0.1, c.optDouble("speed", 1.0));
+                effMs[i] = Math.max(200, Math.round(srcMs[i] / sp));
+            }
+        }
+        // chevauchement du fondu enchaine entre l'element i-1 et i
+        long[] xMs = new long[n];
+        if ("cross".equals(trans)) {
+            for (int i = 1; i < n; i++) {
+                long x = Math.min(fadeUs / 1000L, Math.min(effMs[i], effMs[i - 1]) / 2 - 1);
+                xMs[i] = x >= 200 ? x : 0;
+            }
+        }
+
+        // ---------- couche principale
+        EditedMediaItemSequence.Builder vseq = new EditedMediaItemSequence.Builder();
+        EditedMediaItemSequence.Builder oseq = new EditedMediaItemSequence.Builder();
+        boolean hasOverlay = false;
+        long cursorOv = 0;
+        long startMain = 0;
+        for (int i = 0; i < n; i++) {
+            JSONObject c = clips.getJSONObject(i);
+            boolean image = "image".equals(c.getString("type"));
+            double sp = image ? 1.0 : Math.max(0.1, c.optDouble("speed", 1.0));
+            long inMs = image ? 0 : c.getLong("in");
+            long skipSrc = Math.round(xMs[i] * sp);
+            long mainEffMs = effMs[i] - xMs[i];
+            long mainSrcMs = image ? mainEffMs : srcMs[i] - skipSrc;
+            vseq.addItem(makeItem(c, i, w, h, inMs + skipSrc, mainSrcMs, mainEffMs * 1000L,
+                    false, xMs[i] * 1000L, effMs[i] * 1000L, trans, fadeUs));
+            if (xMs[i] > 0) {
+                long ovStart = startMain - xMs[i];
+                long gap = ovStart - cursorOv;
+                if (gap > 0) {
+                    oseq.addGap(gap * 1000L);
+                }
+                long ovSrc = image ? xMs[i] : skipSrc;
+                oseq.addItem(makeItem(c, i, w, h, inMs, ovSrc, xMs[i] * 1000L,
+                        true, 0L, effMs[i] * 1000L, trans, fadeUs));
+                cursorOv = startMain;
+                hasOverlay = true;
+            }
+            startMain += mainEffMs;
+        }
+        final long totalUs = startMain * 1000L;
         if (totalUs <= 0) {
             throw new IllegalStateException("Montage vide");
         }
@@ -175,6 +258,9 @@ public final class Exporter {
 
         List<EditedMediaItemSequence> seqs = new ArrayList<>();
         seqs.add(vseq.build());
+        if (hasOverlay) {
+            seqs.add(oseq.build());
+        }
 
         // ---------- musique
         JSONObject music = spec.optJSONObject("music");
